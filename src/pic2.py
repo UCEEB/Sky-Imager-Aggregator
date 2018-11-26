@@ -14,10 +14,12 @@ while (True) :
     files = os.listdir('/home/pi/code/STORAGE/')
     full_path = ["/home/pi/code/STORAGE/{0}".format(x) for x in files]
     newest_file = max(full_path, key = os.path.getctime)
+    with open(newest_file[14:43],'rb') as f:
+        skyimage = base64.b64encode(f.read())
+        #dateString = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S+02:00");
 
-    skyimage = base64.b64encode(newest_file)
-    dateString = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S+02:00");
-
+    name = str(newest_file[14:31])
+    dateString = name[0:8] + 'T' + name[9:11] + ':' + name[12:14] + ':' + name[15:17] + '+02:00'
     ###############################################################################
     # Set measured data
 
