@@ -1,40 +1,35 @@
 from time import sleep
 import LibrforPi as lfp
-import os
-import cv2
-import datetime as dt
-import logging
+from subprocess import call
+import sys
 
 
 def main():
-    f = open('log_storage.txt',"w+")
+
     while (True):
         imgnm, hour, minute = lfp.nameimage()
 
         if lfp.time_for_storage(hour,minute) == True:
-            f.write('Thiiiis line is after time_for_storage()')
 
             if lfp.check_storage_content() == True:
-                f.write('Storage is not empty')
+                sys.stdout.write('Storage is not empty')
 
                 if lfp.check_connectivity() == True:
-                    f.write('Connection status: OK')
+                    sys.stdout.write('Connection status: OK')
                     try:
-                        p = os.popen('python pic2.py server') # Sends STORAGE to server
-                        f.write("This should be output: ", p.read())
-                        p.close()
-                        f.write("Pipe closed!")
+                        pipe = call(['python','pic2.py','server']) # Sends STORAGE to server
+                        sys.stdout.write("Storage sent!")
+                        sys.stdout.write("Pipe closed!")
                     except IOError:
-                        f.write('ERROR: calling server script fail!')
-                        p.close()
-                        f.write("Pipe closed because of error...")
+                        sys.stdout.write('ERROR: calling server script fail!')
+                        sys.stdout.write("Pipe closed because of error...")
                         continue
                 elif lfp.check_connectivity() == False:
-                    f.write("No connection")
+                    sys.stdout.write("No connection")
 
-        f.write('Not time for storage yet')
+        sys.stdout.write('Not time for storage yet')
         sleep(3600)
-        f.close()
+
 if __name__ == '__main__':
     print("Running program...")
     main()
