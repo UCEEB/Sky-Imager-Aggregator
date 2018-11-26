@@ -8,39 +8,41 @@ import os
 files = os.listdir('/home/pi/code/')
 full_path = ["/home/pi/code/{0}".format(x) for x in files]
 newest_file = max(full_path, key=os.path.getctime)
-
+print(newest_file)
 if newest_file.endswith('.jpg'):
-    #base = newest_file
-    #dateString = os.path.splitext(base)[0]
-    skyimage = base64.b64encode(newest_file)
-    dateString = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S");
+    with open(newest_file[14:35],"rb") as f:
+        skyimage = base64.b64encode(f.read())
+
+#dateString = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S+02:00");
+name = str(newest_file[14:31])
+dateString = name[0:8] + 'T' + name[9:11] + ':' + name[12:14] + ':' + name[15:17] + '+02:00'
 
 ###############################################################################
 # Set measured data
 
-    id = 72
-    key = "cuFo4Fx2PHQduNrE7TeKVFhVXXcyvHLufQZum0RkX8yGSK9naZptuvqz2zaHi1s0"
+id = 72
+key = "cuFo4Fx2PHQduNrE7TeKVFhVXXcyvHLufQZum0RkX8yGSK9naZptuvqz2zaHi1s0"
 
-    data = {
-        "status": "ok",
-        "id": id,
-        "time": dateString,
-        "coding": "Base64",
-        "data": skyimage
+data = {
+    "status": "ok",
+    "id": id,
+    "time": dateString,
+    "coding": "Base64",
+    "data": skyimage
      }
 
 
-    jsondata = json.dumps(data)
-    signature = hmac_sha256(jsondata, key)
+jsondata = json.dumps(data)
+signature = hmac_sha256(jsondata, key)
 
-    url = "http://" + SERVER + "/api/aers/v1/upload.php?type=pic&signature={}".format(signature)
+url = "http://" + SERVER + "/api/aers/v1/upload.php?type=pic&signature={}".format(signature)
 
-    response = http(url, jsondata)
+response = http(url, jsondata)
           
     
-    print (url)
-    print data
-    print (response)
-    print ('--------------------------------------------------------------------------------')
+print(url)
+#print data
+print(response)
+print('--------------------------------------------------------------------------------')
     
 ###############################################################################
