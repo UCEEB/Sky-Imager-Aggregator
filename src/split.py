@@ -31,10 +31,6 @@ def main():
                 resize = cv2.resize(crop, (1536, 1536), interpolation=cv2.INTER_CUBIC)
                 # Masking image :
                 image = lfp.maskImg(resize) #UNDER RECONSTRUCTION!
-                #image = resize
-                #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                #cv2.imshow('Current image ',image) # ------> Currently unnecessary
-                               
                 image_name = str(image_name)+'.jpg'
                 path = '/home/pi/code'
                 cv2.imwrite(os.path.join(os.path.expanduser('~'), path, image_name), img=image)  # Saving image to disk so it can be sent
@@ -42,26 +38,17 @@ def main():
 
                 if lfp.check_connectivity() == True:
 
-#                    try:
-                    pipe = call(["python","pic.py","server"]) # Sends a single image to server
-                    #pipe.read()
-                    
-##                    sys.stdout.write("Image sent!\n")
-##                    #p.close()
-##                    outdata , outerror = pipe.communicate()
-##                    sys.stdout.write(str(outdata))
-##                    sys.stdout.write(str(outerror))
-##                    pipe.terminate()
-##                    os.system("python pic.py server")
-##                    except:
-##                        #sys.stdout.write(str(e))
-##                        sys.stdout.write('ERROR: calling server script fail!\n')
-##                        sys.stdout.write('Storing image ...\n')
-##                        path = '/home/pi/code'
-##                        cv2.imwrite(os.path.join(os.path.expanduser('~'), path, image_name), img=image)
-##                        lfp.stack_storage()
-##                        sys.stdout.write('Done.\n')
-##                        sys.stdout.write('_____________________________________')
+                    try:
+                        pipe = call(["python","pic.py","server"]) # Sends a single image to server
+
+                    except:
+                        sys.stdout.write('ERROR: calling server script fail!\n')
+                        sys.stdout.write('Storing image ...\n')
+                        path = '/home/pi/code'
+                        cv2.imwrite(os.path.join(os.path.expanduser('~'), path, image_name), img=image)
+                        lfp.stack_storage()
+                        sys.stdout.write('Done.\n')
+                        sys.stdout.write('_____________________________________')
                         
                 if lfp.check_connectivity() == False:
                     sys.stdout.write('Connectivity error\nStoring image...\n')

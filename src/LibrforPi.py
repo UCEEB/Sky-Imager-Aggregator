@@ -109,20 +109,6 @@ def pause_time(hour, minute):
 
     return
 
-def check_border_conditions():
-    # Might need slight adjustment in if cases ~!
-    flag = False  # return flag = 0 if all conditions are satisfied
-    ni, hour, minute = nameimage()
-    SunRiseSet = suncycle_today()
-
-    if hour > SunRiseSet[0]:
-        if minute > SunRiseSet[1]:
-            flag = True
-    if hour < SunRiseSet[3]:
-        if minute < SunRiseSet[4]:
-            flag = True
-    return flag
-
 
 def store_image(img):
     flag = 1  # return flag = 0 when image is stored
@@ -144,11 +130,6 @@ def stack_storage():
         oldest_file = min(full_path, key=os.path.getctime)
         os.remove(oldest_file)
         return
-
-def send_image():
-    flag = 1  # return flag = 0 when sending image was successful
-
-    return flag
 
 
 def check_storage_content():
