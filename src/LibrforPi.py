@@ -26,48 +26,6 @@ def maskImg(img):
     return final
 
 
-def suncycle_today():
-    # takes current date and searches for todays' sunrise and sunset time in the timetable
-    # the timetable is previusly generated in matlab
-    time = str(datetime.datetime.now())
-    year = time[0:4]
-    day = time[8:10]
-    month = time[5:7]
-
-    month_tmp = int(month)
-    if month_tmp>9:
-        today = year + ' ' + month + ' ' + day
-    else:
-        today = year + ' ' + month[1] + ' ' + day
-
-    sunriseset = '2018 1 1	5.062500  17.112505'
-    with open("Suncycle_timetable_2018.txt") as timetable:
-        for line in timetable:
-            flag = line.find(today)
-            if flag == 0:
-                sunriseset = copy(line)
-
-    if month_tmp > 9:
-        sunrise_tmp = sunriseset[11:15]
-        sunset_tmp = sunriseset[21:26]
-    else:
-        sunrise_tmp = sunriseset[10:14]
-        sunset_tmp = sunriseset[20:25]
-    
-    sunrise_hour = sunrise_tmp[0]
-    sunrise_hour = int(sunrise_hour)
-
-    sunrise_min = int(int(sunrise_tmp[2:4]) * (6 / 10))
-
-    sunset_hour = sunset_tmp[0]
-    sunset_hour = int(sunset_hour)
-
-    sunset_min = int(int(sunset_tmp[3:5]) * (6 / 10))
-
-    timetable.close()
-    return sunrise_hour, sunrise_min, sunset_hour, sunset_min
-
-
 def nameimage():
     # Concatinates todays time and date to create an image name
     time = str(datetime.datetime.now())
@@ -80,6 +38,76 @@ def nameimage():
     imagename = year[2:4]+ '-' + month + '-' + day+ '_' + hour + '-' + minute + '-' + second
     return imagename, int(hour), int(minute)
 
+
+def suncycle_today():
+    # takes current date and searches for todays' sunrise and sunset time in the timetable
+    # the timetable is previusly generated in matlab
+    time = str(datetime.datetime.now())
+    year = time[0:4]
+    day = time[8:10]
+    month = time[5:7]
+
+    month_tmp = int(month)
+    if month_tmp > 9:
+        today = year + ' ' + month + ' ' + day
+    else:
+        today = year + ' ' + month[1] + ' ' + day
+
+    sunriseset = '2018 1 1	5.062500  17.112505'
+    with open("Suncycle_timetable_2018.txt") as timetable:
+        for line in timetable:
+            flag = line.find(today)
+            if flag == 0:
+                sunriseset = copy(line)
+    if month_tmp > 9:
+        sunrise_tmp = sunriseset[11:15]
+        sunset_tmp = sunriseset[21:26]
+    else:
+        sunrise_tmp = sunriseset[10:14]
+        sunset_tmp = sunriseset[20:25]
+
+    sunrise_hour = sunrise_tmp[0]
+    sunrise_hour = int(sunrise_hour)
+
+    sunrise_min = int(int(sunrise_tmp[2:4]) * (6 / 10))
+    sunset_hour = sunset_tmp[0:2]
+    sunset_hour = int(sunset_hour)
+    sunset_min = int(int(sunset_tmp[3:5]) * (6 / 10))
+
+    timetable.close()
+    return sunrise_hour, sunrise_min, sunset_hour, sunset_min
+
+
+def calculate_pause_time():
+    sunriset = suncycle_today()
+    print("sunriset from calculate pause time: ", sunriset)
+    minute_temp = sunriset[3] - sunriset[1]
+    hour_temp = 24 - sunriset[2] + sunriset[0]
+    if minute_temp < 0:
+        hour_temp -= 1
+        minute_temp += 60
+    sleeptime = (minute_temp*60) + hour_temp*3600 # Make sleeptime in seconds
+    print(sleeptime)
+    print('System will pause until sunrise for', hour_temp, 'hours and ',minute_temp, 'minutes')
+    print('Sunrise is at:',sunriset[0],':',sunriset[1],'am')
+    return sleeptime
+
+def pause_time(hour, minute):
+    sunriseset = suncycle_today()
+    sleeptime = 0
+    flag = 1
+    if hour == sunriseset[2]:
+        if minute >= sunriseset[3]:
+            sleeptime = calculate_pause_time()
+            print('System paused.')
+            print(abs(sleeptime))
+            #sleep(sleeptime)
+            print('Restarting program!')
+            print("Sunriseset: ",sunriseset)
+            print('Sunrise time: ', sunriseset[0], ':', sunriseset[1])
+            print('...................')
+
+    return
 
 def check_border_conditions():
     # Might need slight adjustment in if cases ~!
@@ -156,34 +184,6 @@ def send_storage_content():
     
     return
 
-
-def calculate_pause_time():
-    sunriset = suncycle_today()
-    minute_temp = sunriset[3] - sunriset[1]
-    hour_temp = sunriset[2] - sunriset[0]
-    if minute_temp < 0:
-        hour_temp -= 1
-        minute_temp += 60
-    sleeptime = (minute_temp*60) + hour_temp*3600 # Make sleeptime in seconds
-    print('System will pause until sunrise for', hour_temp, 'hours and ',minute_temp, 'minutes')
-    print('Sunrise is at:',sunriset[0],':',sunriset[1],'am')
-    return sleeptime
-
-
-def pause_time(hour, minute):
-   sunriseset = suncycle_today()
-   sleeptime = 0
-   flag = 1
-   if hour == sunriseset[2] :
-       if minute >= sunriseset[3]:
-           sleeptime = calculate_pause_time()
-           print('System paused.')
-           sleep(sleeptime)
-           print('Restarting program!')
-           print('Sunrise time: ',sunriseset[0],':',sunriseset[1])
-           print('...................')
-           
-   return
 
 def time_for_storage(hour,minute):
     sunriseset = suncycle_today()
