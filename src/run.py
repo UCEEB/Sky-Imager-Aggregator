@@ -6,15 +6,25 @@ import cv2
 from time import sleep
 import datetime as dt
 import os
+import configparser
 
 def main():
     # For sky-scanner camera : 10.208.8.43/video.mjpg | usr = LI20411 pass = Bustehrad27343
     # For cheap camera http://10.208.249.205/JpegStream.cgi?username=A626F32064EC55686A788FCF789120FB90A666830053AEAC36546976D5B7558F&password=A626F32064EC55686A788FCF789120FB90A666830053AEAC36546976D5B7558F&channel=1&secret=1&key=42090Bmdmhf
     # Camera inside UCEEB: usr = admin pass = admin ip = 192.168.0.10
     #cap = cv2.VideoCapture('http://admin:admin@192.168.0.10/video.mjpg')
-    cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=163CA3D491AFA4E09404D6F98F9E6E7F27F798C80FB2A9029E67FA36E6BC935D&password=5589BA4CDA78706E9E37EBD1A28F204E6D9EA5126E7329A69FB8F44F89F14F19&channel=1&secret=1&key=89D9caaik')
+    ##cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=163CA3D491AFA4E09404D6F98F9E6E7F27F798C80FB2A9029E67FA36E6BC935D&password=5589BA4CDA78706E9E37EBD1A28F204E6D9EA5126E7329A69FB8F44F89F14F19&channel=1&secret=1&key=89D9caaik')
     #multiprocess_flag = 0 # Setting a flag for the second process | flag for sending_storage_content()
 
+    # read config file
+    config = configparser.ConfigParser()
+    config.read('./config/config.ini')
+    cap_mod = int(config['DEFAULT']['cap_mod'])
+    cap_url = config['DEFAULT']['cap_url']
+    
+    cap = cv2.VideoCapture(cap_url)
+
+    
 
     while (True):
 
@@ -22,7 +32,7 @@ def main():
         sec = sec[17:19]
         sec = int(sec)
 
-        if (sec % 10 == 0):
+        if (sec % cap_mod == 0):
 
             # Opening camera feed:
             ret, frame = cap.read()
