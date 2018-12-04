@@ -6,6 +6,7 @@ import cv2
 import datetime as dt
 import sys
 from subprocess import call
+import configparser
 
 def main():
     # For sky-scanner camera : 10.208.8.43/video.mjpg | usr = LI20411 pass = Bustehrad27343
@@ -68,11 +69,11 @@ def main():
                     sys.stdout.write('Done.\n')
                     sys.stdout.write('_________________________________________\n')
 
-                lfp.pause_time(hour,minute)
                 sys.stdout.write("__________________________________________\n")
 
             else:
                 sys.stdout.write('Camera unavailable. -> Possible solution: Reboot RaspberryPi with "sudo reboot" \n')
+        lfp.pause_time(hour, minute)
         lfp.delete_image()
         time.sleep(0.5)
         
