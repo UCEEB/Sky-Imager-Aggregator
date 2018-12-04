@@ -13,13 +13,23 @@ def main():
     # Camera inside UCEEB: usr = admin pass = admin ip = 192.168.0.10
     #cap = cv2.VideoCapture('http://admin:admin@192.168.0.10/video.mjpg')
     #cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&password=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&channel=1&secret=1&key=25C1D5BDBppdmh')
+
+    # read config file
+    config = configparser.ConfigParser()
+    config.read('./config/config.ini')
+    cap_mod = int(config['DEFAULT']['cap_mod'])
+    cap_url = config['DEFAULT']['cap_url']
+    
+    
     while (True):
         sec = str(dt.datetime.now())
         sec = sec[17:19]
         sec = int(sec)
-        cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&password=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&channel=1&secret=1&key=25C1D5BDBppdmh')
         
-        if (sec % 10 == 0):
+        #cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&password=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&channel=1&secret=1&key=25C1D5BDBppdmh')
+        cap = cv2.VideoCapture(cap_url)
+        
+        if (sec % cap_mod == 0):
             image_name, hour, minute = lfp.nameimage()
             sys.stdout.write(image_name)
             sys.stdout.write('\n')
