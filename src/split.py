@@ -77,11 +77,8 @@ def main():
                 lfp.pause_time(hour,minute)
             else:
                 sys.stdout.write('Camera unavailable. -> Possible solution: Reboot RaspberryPi with "sudo reboot" \n')
-       
-        try:
             lfp.delete_image()
-        
-        time.sleep(0.5)
+    time.sleep(0.5)
     
 if __name__ == '__main__':
     sys.stdout.write("Running program...")
