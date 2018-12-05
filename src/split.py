@@ -15,12 +15,17 @@ def main():
     #cap = cv2.VideoCapture('http://admin:admin@192.168.0.10/video.mjpg')
     #cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&password=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&channel=1&secret=1&key=25C1D5BDBppdmh')
 
+    path = '/home/pi/Sky-Imager-Aggregator/config/config.ini'
+    abspath = os.path.abspath(path) #To use config.ini files you need an absolute path to file relative to the directory you are in now
+    sys.stdout.write(abspath)
     # read config file
     config = configparser.ConfigParser()
-    config.read('./config/config.ini')
-    cap_mod = int(config['DEFAULT']['cap_mod'])
-    cap_url = config['DEFAULT']['cap_url']
-    
+    config.read(abspath)
+    #cap_mod = int(config['DEFAULT']['cap_mod'])
+    cap_mod = config.getint('DEFAULT','cap_mod')
+    #cap_url = config['DEFAULT']['cap_url']
+    cap_url = config.get('DEFAULT','cap_url')
+
     
     while (True):
         sec = str(dt.datetime.now())
@@ -48,7 +53,6 @@ def main():
                 sys.stdout.write('Image saved to disk\nReady to send\n')
 
                 if lfp.check_connectivity() == True:
-
                     try:
                         pipe = call(["python","pic.py","server"]) # Sends a single image to server
 
@@ -70,13 +74,15 @@ def main():
                     sys.stdout.write('_________________________________________\n')
 
                 sys.stdout.write("__________________________________________\n")
-
+                lfp.pause_time(hour,minute)
             else:
                 sys.stdout.write('Camera unavailable. -> Possible solution: Reboot RaspberryPi with "sudo reboot" \n')
-        lfp.pause_time(hour, minute)
-        lfp.delete_image()
-        time.sleep(0.5)
+       
+        try:
+            lfp.delete_image()
         
+        time.sleep(0.5)
+    
 if __name__ == '__main__':
     sys.stdout.write("Running program...")
     main()
