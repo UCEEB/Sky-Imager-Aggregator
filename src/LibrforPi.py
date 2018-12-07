@@ -12,6 +12,9 @@ import subprocess
 from time import sleep
 import http.client as httplib
 
+path_src = '/home/pi/Sky-Imager-Aggregator/src'
+path_storage = '/home/pi/Sky-Imager-Aggregator/STORAGE'
+
 def maskImg(img):
     # OpenCV loads the images as multi-dimensional NumPy arrays but in reverse order: We need to convert BGR to RGB
     # The mask is previously created in matlab in the format bmp
@@ -115,8 +118,7 @@ def store_image(img):
     # Neeeds to be updated
     image_name ,hr , mnt= nameimage()
     image_name = str(image_name)+'.jpg'
-    path = '/home/pi/Sky-Imager-Aggregator/STORAGE' #If you need to save in a different place change the path variable
-    image = cv2.imwrite(os.path.join(os.path.expanduser('~'),path, image_name), img=img)
+    image = cv2.imwrite(os.path.join(os.path.expanduser('~'),path_storage, image_name), img=img)
 
     flag = 0
 
@@ -124,7 +126,7 @@ def store_image(img):
 
 def stack_storage():
 
-    files = os.listdir('/home/pi/Sky-Imager-Aggregator/STORAGE')
+    files = os.listdir(path_storage)
     full_path = ["/home/pi/code/Sky-Imager-Aggregator/STORAGE/{0}".format(x) for x in files]
     if len([name for name in files]) == 8400:
         oldest_file = min(full_path, key=os.path.getctime)
@@ -134,8 +136,8 @@ def stack_storage():
 
 def check_storage_content():
     flag = 10
-    work_path = '/home/pi/Sky-Imager-Aggregator/STORAGE'
-    if os.listdir(work_path) == []:
+    path_storage
+    if os.listdir(path_storage) == []:
         flag = 0
     else:
         flag = 1
@@ -143,8 +145,8 @@ def check_storage_content():
 
 
 def empty_storage_content():
-    shutil.rmtree('/home/pi/Sky-Imager-Aggregator/STORAGE')
-    os.mkdir('/home/pi/Sky-Imager-Aggregator/STORAGE/')
+    shutil.rmtree(path_storage)
+    os.mkdir(path_storage)
     return
 
 
@@ -177,7 +179,7 @@ def time_for_storage(hour,minute):
         
 def delete_image():
 
-    for file in os.listdir('/home/pi/Sky-Imager-Aggregator/src/'):
+    for file in os.listdir(path_src):
         if file.endswith('.jpg'):
             os.remove(file)
 

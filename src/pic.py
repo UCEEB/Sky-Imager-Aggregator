@@ -5,7 +5,8 @@ import os
 
 ###############################################################################
 # Prepare image data
-files = os.listdir('/home/pi/Sky-Imager-Aggregator/src/')
+path = '/home/pi/Sky-Imager-Aggregator/src/'
+files = os.listdir(path)
 full_path = ["/home/pi/Sky-Imager-Aggregator/src/{0}".format(x) for x in files]
 newest_file = max(full_path, key=os.path.getctime)
 print(newest_file)
