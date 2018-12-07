@@ -5,8 +5,8 @@ import os
 
 ###############################################################################
 # Prepare image data
-files = os.listdir('/home/pi/code/')
-full_path = ["/home/pi/code/{0}".format(x) for x in files]
+files = os.listdir('/home/pi/Sky-Imager-Aggregator/src/')
+full_path = ["/home/pi/Sky-Imager-Aggregator/src/{0}".format(x) for x in files]
 newest_file = max(full_path, key=os.path.getctime)
 print(newest_file)
 if newest_file.endswith('.jpg'):
