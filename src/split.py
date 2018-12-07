@@ -48,7 +48,7 @@ def main():
                 # Masking image :
                 image = lfp.maskImg(resize) #UNDER RECONSTRUCTION!
                 image_name = str(image_name)+'.jpg'
-                path = '/home/pi/code'
+                path = '/home/pi/Sky-Imager-Aggregator/src'
                 cv2.imwrite(os.path.join(os.path.expanduser('~'), path, image_name), img=image)  # Saving image to disk so it can be sent
                 sys.stdout.write('Image saved to disk\nReady to send\n')
 
@@ -59,7 +59,7 @@ def main():
                     except:
                         sys.stdout.write('ERROR: calling server script fail!\n')
                         sys.stdout.write('Storing image ...\n')
-                        path = '/home/pi/code'
+                        path = '/home/pi/Sky-Imager-Aggregator/STORAGE'
                         cv2.imwrite(os.path.join(os.path.expanduser('~'), path, image_name), img=image)
                         lfp.stack_storage()
                         sys.stdout.write('Done.\n')
@@ -67,7 +67,7 @@ def main():
                         
                 if lfp.check_connectivity() == False:
                     sys.stdout.write('Connectivity error\nStoring image...\n')
-                    path = '/home/pi/code/STORAGE'
+                    path = '/home/pi/Sky-Imager-Aggregator/STORAGE'
                     cv2.imwrite(os.path.join(os.path.expanduser('~'), path, image_name), img=image)
                     lfp.stack_storage()
                     sys.stdout.write('Done.\n')
