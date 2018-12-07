@@ -15,7 +15,7 @@ import http.client as httplib
 def maskImg(img):
     # OpenCV loads the images as multi-dimensional NumPy arrays but in reverse order: We need to convert BGR to RGB
     # The mask is previously created in matlab in the format bmp
-    mask_int8 = cv2.imread("bwmask.bmp")
+    mask_int8 = cv2.imread("/home/pi/Sky-Imager-Aggregator/config/bwmask.bmp")
     #mask = skimage.img_as_float(mask)
     #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     mask = mask_int8/255
@@ -115,7 +115,7 @@ def store_image(img):
     # Neeeds to be updated
     image_name ,hr , mnt= nameimage()
     image_name = str(image_name)+'.jpg'
-    path = '/home/pi/code/STORAGE' #If you need to save in a different place change the path variable
+    path = '/home/pi/Sky-Imager-Aggregator/STORAGE' #If you need to save in a different place change the path variable
     image = cv2.imwrite(os.path.join(os.path.expanduser('~'),path, image_name), img=img)
 
     flag = 0
@@ -124,8 +124,8 @@ def store_image(img):
 
 def stack_storage():
 
-    files = os.listdir('/home/pi/code/STORAGE')
-    full_path = ["/home/pi/code/STORAGE/{0}".format(x) for x in files]
+    files = os.listdir('/home/pi/Sky-Imager-Aggregator/STORAGE')
+    full_path = ["/home/pi/code/Sky-Imager-Aggregator/STORAGE/{0}".format(x) for x in files]
     if len([name for name in files]) == 8400:
         oldest_file = min(full_path, key=os.path.getctime)
         os.remove(oldest_file)
@@ -134,7 +134,7 @@ def stack_storage():
 
 def check_storage_content():
     flag = 10
-    work_path = '/home/pi/code/STORAGE'
+    work_path = '/home/pi/Sky-Imager-Aggregator/STORAGE'
     if os.listdir(work_path) == []:
         flag = 0
     else:
@@ -143,8 +143,8 @@ def check_storage_content():
 
 
 def empty_storage_content():
-    shutil.rmtree('/home/pi/code/STORAGE')
-    os.mkdir('/home/pi/code/STORAGE/')
+    shutil.rmtree('/home/pi/Sky-Imager-Aggregator/STORAGE')
+    os.mkdir('/home/pi/Sky-Imager-Aggregator/STORAGE/')
     return
 
 
@@ -177,7 +177,7 @@ def time_for_storage(hour,minute):
         
 def delete_image():
 
-    for file in os.listdir('/home/pi/code/'):
+    for file in os.listdir('/home/pi/Sky-Imager-Aggregator/src/'):
         if file.endswith('.jpg'):
             os.remove(file)
 
