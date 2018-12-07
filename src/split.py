@@ -72,12 +72,12 @@ def main():
                     lfp.stack_storage()
                     sys.stdout.write('Done.\n')
                     sys.stdout.write('_________________________________________\n')
-
+                lfp.delete_image()
                 sys.stdout.write("__________________________________________\n")
                 lfp.pause_time(hour,minute)
             else:
                 sys.stdout.write('Camera unavailable. -> Possible solution: Reboot RaspberryPi with "sudo reboot" \n')
-            lfp.delete_image()
+
     time.sleep(0.5)
     
 if __name__ == '__main__':
