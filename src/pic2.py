@@ -8,10 +8,11 @@ import os
 ###############################################################################
 # Prepare image data
 
-files = os.listdir('/home/pi/Sky-Imager-Aggregator/STORAGE/')
+path_storage = '/home/pi/Sky-Imager-Aggregator/STORAGE/'
+files = os.listdir(path_storage)
 
 while (True) :
-    files = os.listdir('/home/pi/Sky-Imager-Aggregator/STORAGE/')
+    files = os.listdir(path_storage)
     full_path = ["/home/pi/Sky-Imager-Aggregator/STORAGE/{0}".format(x) for x in files]
     newest_file = max(full_path, key = os.path.getctime)
     with open(newest_file[14:43],'rb') as f:
