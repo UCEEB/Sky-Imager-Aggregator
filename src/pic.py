@@ -11,11 +11,12 @@ full_path = ["/home/pi/Sky-Imager-Aggregator/src/{0}".format(x) for x in files]
 newest_file = max(full_path, key=os.path.getctime)
 print(newest_file)
 if newest_file.endswith('.jpg'):
-    with open(newest_file[14:35],"rb") as f:
+    with open(newest_file[35:56],"rb") as f:
         skyimage = base64.b64encode(f.read())
 
 #dateString = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S+02:00");
-name = str(newest_file[14:31])
+name = str(newest_file[35:52])
+print('Name:',name)
 dateString = name[0:8] + 'T' + name[9:11] + ':' + name[12:14] + ':' + name[15:17] + '+02:00'
 
 ###############################################################################
