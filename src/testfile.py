@@ -1,29 +1,10 @@
-#...
-# Author: Barbara Stefanovska
-#...
-
-import datetime
-import pandas as pd
-import numpy as np
-from copy import copy
-#import LibrforPi as lp
 import os
-import multiprocessing
-from urllib import request , response
-import cv2
-from time import sleep
-import subprocess
-import pause
-import matplotlib.pyplot as plt
-import LibrforPi as lfp
-
-while (True):
-    try:
-        print('Testing function pause_time()')
-        lfp.pause_time(18,20)
-
-    except OSError:
-        print('Nope')
-        break
-
+# Prepare image data
+path = '/home/pi/Sky-Imager-Aggregator/STORAGE/'
+files = os.listdir(path)
+full_path = ["/home/pi/Sky-Imager-Aggregator/STORAGE/{0}".format(x) for x in files]
+newest_file = max(full_path, key=os.path.getctime)
+print(newest_file)
+name = newest_file[39:56]
+print(name)
 

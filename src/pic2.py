@@ -15,11 +15,11 @@ while (True) :
     files = os.listdir(path_storage)
     full_path = ["/home/pi/Sky-Imager-Aggregator/STORAGE/{0}".format(x) for x in files]
     newest_file = max(full_path, key = os.path.getctime)
-    with open(newest_file[14:43],'rb') as f:
+    with open(newest_file[39:61],'rb') as f:
         skyimage = base64.b64encode(f.read())
         #dateString = datetime.datetime.now().strftime("%y-%m-%dT%H:%M:%S+02:00");
 
-    name = str(newest_file[14:31])
+    name = str(newest_file[39:56])
     dateString = name[0:8] + 'T' + name[9:11] + ':' + name[12:14] + ':' + name[15:17] + '+02:00'
     ###############################################################################
     # Set measured data
