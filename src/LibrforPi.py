@@ -104,7 +104,7 @@ def pause_time(hour, minute):
             sleeptime = calculate_pause_time()
             print('System paused.')
             print(abs(sleeptime))
-            #sleep(sleeptime)
+            sleep(sleeptime)
             print('Restarting program!')
             print("Sunriseset: ",sunriseset)
             print('Sunrise time: ', sunriseset[0], ':', sunriseset[1])
