@@ -42,43 +42,77 @@ def nameimage():
     return imagename, int(hour), int(minute)
 
 
-def suncycle_today():
+def suncycle_today2():
     # takes current date and searches for todays' sunrise and sunset time in the timetable
     # the timetable is previusly generated in matlab
+##    time = str(datetime.datetime.now())
+##    year = time[0:4]
+##    day = time[8:10]
+##    month = time[5:7]
+##
+##    month_tmp = int(month)
+##    if month_tmp > 9:
+##        today = year + ' ' + month + ' ' + day
+##    else:
+##        today = year + ' ' + month[1] + ' ' + day
+##
+##    sunriseset = '2019 1 1	5.062500  21.112505'
+##    with open("Suncycle_timetable_2019.txt") as timetable:
+##        for line in timetable:
+##            flag = line.find(today)
+##            if flag == 0:
+##                sunriseset = copy(line)
+##    if month_tmp > 9:
+##        sunrise_tmp = sunriseset[11:15]
+##        sunset_tmp = sunriseset[21:26]
+##    else:
+##        sunrise_tmp = sunriseset[10:14]
+##        sunset_tmp = sunriseset[20:25]
+##
+##    sunrise_hour = sunrise_tmp[0]
+##    sunrise_hour = int(sunrise_hour)
+##
+##    sunrise_min = int(int(sunrise_tmp[2:4]) * (6 / 10))
+##    sunset_hour = sunset_tmp[0:2]
+##    sunset_hour = int(sunset_hour)
+##    sunset_min = int(int(sunset_tmp[3:5]) * (6 / 10))
+##
+##    timetable.close()
+    #return sunrise_hour, sunrise_min, sunset_hour, sunset_min
+    #TODO debuged to keep it running even inefeciently
+    #Repair = make table versatile, not year dependent, eg. 12 values per year }month specific
+    return 5, 0, 21, 15
+
+def suncycle_today():
+    # takes current date and searches for this months' sunrise and sunset time in the timetable
+    # the timetable is previusly generated in matlab
     time = str(datetime.datetime.now())
-    year = time[0:4]
-    day = time[8:10]
     month = time[5:7]
-
     month_tmp = int(month)
-    if month_tmp > 9:
-        today = year + ' ' + month + ' ' + day
-    else:
-        today = year + ' ' + month[1] + ' ' + day
 
-    sunriseset = '2018 1 1	5.062500  17.112505'
-    with open("Suncycle_timetable_2018.txt") as timetable:
+    today_line = ' ' + month + 'M'
+
+    sunriseset = '5.0 21.2'
+    with open("Suncycle_timetable.txt") as timetable:
         for line in timetable:
-            flag = line.find(today)
+            flag = line.find(today_line)
             if flag == 0:
                 sunriseset = copy(line)
-    if month_tmp > 9:
-        sunrise_tmp = sunriseset[11:15]
-        sunset_tmp = sunriseset[21:26]
-    else:
-        sunrise_tmp = sunriseset[10:14]
-        sunset_tmp = sunriseset[20:25]
 
-    sunrise_hour = sunrise_tmp[0]
+    sunrise_tmp = sunriseset[0:2]
+    sunset_tmp = sunriseset[4:7]
+
+    sunrise_hour = int(sunrise_tmp[0])
     sunrise_hour = int(sunrise_hour)
+    sunrise_min = sunrise_hour * 6
 
-    sunrise_min = int(int(sunrise_tmp[2:4]) * (6 / 10))
-    sunset_hour = sunset_tmp[0:2]
+    sunset_hour = int(sunset_tmp[0:1])
     sunset_hour = int(sunset_hour)
-    sunset_min = int(int(sunset_tmp[3:5]) * (6 / 10))
+    sunset_min = sunset_hour * 6
 
     timetable.close()
     return sunrise_hour, sunrise_min, sunset_hour, sunset_min
+
 
 
 def calculate_pause_time():
@@ -162,8 +196,8 @@ def send_storage_content():
 
     #subprocess.call(['python pic2.py server']) # pic2.py is a version of pic.py that sends the whole storage
     # Starting from the most recent photo until there are no more photos
-    p = os.popen("python pic2.py server")
-    print(p.read())
+    #p = os.popen("python pic2.py server")
+    #print(p.read())
     
     return
 

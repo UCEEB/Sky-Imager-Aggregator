@@ -6,7 +6,7 @@ import sys
 
 def main():
 
-    while (True):
+    while (False):
         imgnm, hour, minute = lfp.nameimage()
 
         if lfp.time_for_storage(hour,minute) == True:
