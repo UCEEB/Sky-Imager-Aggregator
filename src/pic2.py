@@ -11,7 +11,7 @@ import os
 path_storage = '/home/pi/Sky-Imager-Aggregator/STORAGE/'
 files = os.listdir(path_storage)
 
-while (True) :
+while (False) :
     files = os.listdir(path_storage)
     full_path = ["/home/pi/Sky-Imager-Aggregator/STORAGE/{0}".format(x) for x in files]
     newest_file = max(full_path, key = os.path.getctime)

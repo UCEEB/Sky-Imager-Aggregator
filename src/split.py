@@ -16,7 +16,7 @@ def main():
     #cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&password=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&channel=1&secret=1&key=25C1D5BDBppdmh')
 
     path_src = '/home/pi/Sky-Imager-Aggregator/src'
-    path_storage = '/home/pi/Sky-Imager-Aggregator/STORAGE'
+    path_storage = '/home/pi/Sky-Imager-Aggregator/RECENT'
     path_config = '/home/pi/Sky-Imager-Aggregator/config/config.ini'
     abspath = os.path.abspath(path_config) #To use config.ini files you need an absolute path to file relative to the directory you are in now
     sys.stdout.write(abspath)
@@ -34,10 +34,10 @@ def main():
         sec = sec[17:19]
         sec = int(sec)
         
-        #cap = cv2.VideoCapture('http://192.168.0.10/JpegStream.cgi?username=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&password=4A0B23AFD8988EA318DD569661C7A83845EC450673899D7491F0F29BD382D026&channel=1&secret=1&key=25C1D5BDBppdmh')
-        cap = cv2.VideoCapture(cap_url)
+       
         
         if (sec % cap_mod == 0):
+            cap = cv2.VideoCapture(cap_url)
             image_name, hour, minute = lfp.nameimage()
             sys.stdout.write(image_name)
             sys.stdout.write('\n')
@@ -46,11 +46,13 @@ def main():
             if cap.isOpened():
                 # Resizing in case of wrong dimensions:
                 crop = frame[45:1970,340:2265]
-                resize = cv2.resize(crop, (1536, 1536), interpolation=cv2.INTER_CUBIC)
+                #resize = cv2.resize(crop, (1536, 1536), interpolation=cv2.INTER_CUBIC)
                 # Masking image :
-                image = lfp.maskImg(resize) #UNDER RECONSTRUCTION!
+                #image = lfp.maskImg(resize) #UNDER RECONSTRUCTION!
+                image = crop
                 image_name = str(image_name)+'.jpg'
-                cv2.imwrite(os.path.join(os.path.expanduser('~'), path_src, image_name), img=image)  # Saving image to disk so it can be sent
+                image_path = (os.path.join(os.path.expanduser('~'), path_storage, image_name))
+                cv2.imwrite(image_path, img=image)  # Saving image to disk so it can be sent
                 sys.stdout.write('Image saved to disk\nReady to send\n')
 
                 if lfp.check_connectivity() == True:
@@ -59,22 +61,24 @@ def main():
 
                     except:
                         sys.stdout.write('ERROR: calling server script fail!\n')
-                        sys.stdout.write('Storing image ...\n')
-                        cv2.imwrite(os.path.join(os.path.expanduser('~'), path_storage, image_name), img=image)
-                        lfp.stack_storage()
-                        sys.stdout.write('Done.\n')
-                        sys.stdout.write('_____________________________________')
-                        
-                if lfp.check_connectivity() == False:
-                    sys.stdout.write('Connectivity error\nStoring image...\n')
-                    cv2.imwrite(os.path.join(os.path.expanduser('~'), path_storage, image_name), img=image)
-                    lfp.stack_storage()
-                    sys.stdout.write('Done.\n')
-                    sys.stdout.write('_________________________________________\n')
+                        #sys.stdout.write('Storing image ...\n')
+                        #cv2.imwrite(os.path.join(os.path.expanduser('~'), path_storage, image_name), img=image)
+                        #lfp.stack_storage()
+                        #sys.stdout.write('Done.\n')
+                        #sys.stdout.write('_____________________________________')
+                
+                
+                
+                #if lfp.check_connectivity() == False:
+                #    sys.stdout.write('Connectivity error\nStoring image...\n')
+                #    cv2.imwrite(os.path.join(os.path.expanduser('~'), path_storage, image_name), img=image)
+                #    lfp.stack_storage()
+                #    sys.stdout.write('Done.\n')
+                #    sys.stdout.write('_________________________________________\n')
 
-                lfp.delete_image()
-                sys.stdout.write("__________________________________________\n")
-                lfp.pause_time(hour,minute)
+                #lfp.delete_image()
+                #sys.stdout.write("__________________________________________\n")
+                #lfp.pause_time(hour,minute)
             else:
                 sys.stdout.write('Camera unavailable. -> Possible solution: Reboot RaspberryPi with "sudo reboot" \n')
 
