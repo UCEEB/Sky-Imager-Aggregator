@@ -13,25 +13,14 @@ from astral import Astral, Location
 import configparser
 import logging 
 
-#path_src = '/home/pi/Sky-Imager-Aggregator/src'
-#path_storage = '/home/pi/Sky-Imager-Aggregator/STORAGE'
 
-def maskImg(img,mask):
+
+def maskImg(image,mask_path):
     # OpenCV loads the images as multi-dimensional NumPy arrays but in reverse order: We need to convert BGR to RGB
     # The mask is previously created in matlab in the format bmp
-    mask_int8 = cv2.imread("/home/pi/Sky-Imager-Aggregator/config/bwmask.bmp")
-    
-    #mask = skimage.img_as_float(mask)
-    #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    mask = mask_int8/255
-     
-    final = copy(img)
-     
-    final[:, :, 0] = np.multiply(img[:, :, 0], mask[:, :, 0])
-    final[:, :, 1] = np.multiply(img[:, :, 1], mask[:, :, 1])
-    final[:, :, 2] = np.multiply(img[:, :, 2], mask[:, :, 2])
-    return final
+    mask = cv2.imread(mask_path)/255
+
+    return np.multiply(mask,image)
 
 
 def hmac_sha256(message, key):
@@ -43,7 +32,8 @@ def http(url, data):
     postdata = {
         "data": data
     }
-    return requests.post(url, data=postdata).text
+    
+    return requests.post(url, data=postdata)
 
 def upload_json(image,file_time,server):
 
@@ -68,7 +58,7 @@ def upload_json(image,file_time,server):
     
     response = http(url, jsondata)
     try:
-        json_response=json.loads(response)
+        json_response=json.loads(response.text)
     except Exception as e:
             raise Exception(response)
 
@@ -92,6 +82,7 @@ def is_daytime(camera_latitude,camera_longitude,camera_altitude,print_time ):
        return True
     return False
 
+#unused
 def get_SunR_SunS(camera_latitude,camera_longitude,camera_altitude,print_time ):
     a = Astral()
     a.solar_depression = 'civil'
@@ -131,8 +122,10 @@ class config_obj:
             self.filetime_format=config.get('SETTING','filetime_format')
             self.image_quality=config.getint('SETTING','image_quality')
             self.crop= [int(x) for x in config.get('SETTING','crop').split(",")] #map(int, config.get('SETTING','crop').split(","))
+            self.mask_path=config.get('SETTING','mask_path')
+
             
-            '''
+            '''unused
             sunrise=config.get('SETTING','today_sunrise')
             sunset=config.get('SETTING','today_sunset')
             new_value=False
@@ -152,11 +145,6 @@ class config_obj:
             '''
                 #with open(path_config, 'w') as configfile:    # save
                 #    config.write(configfile)
-
-
-
-            
-
 
 
         except Exception as e:
