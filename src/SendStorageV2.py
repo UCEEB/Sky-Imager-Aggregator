@@ -9,7 +9,7 @@ import datetime as dt
 
 def main():
     #inicialize logging
-    logger=lfp.set_logger(logging.DEBUG)
+    logger,console_logger=lfp.set_logger(logging.DEBUG)
     path_of_script = os.path.realpath(__file__)
     path_config = os.path.dirname(os.path.realpath(__file__))+'/config.ini' 
 
@@ -17,7 +17,7 @@ def main():
     conf = lfp.config_obj(path_config,logger)
 
     #inicialize log to file
-    lfp.set_log_to_file(conf.log_path,conf.log_to_console,logger)
+    lfp.set_log_to_file(conf.log_path,conf.log_to_console,logger,console_logger)
 
     if os.listdir(conf.path_storage):
         logger.info('Storage is not empty')
