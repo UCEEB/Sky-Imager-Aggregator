@@ -1,0 +1,9 @@
+[Unit]
+Description=Downloads an image from a fisheye camera
+
+[Service]
+Type=oneshot
+#ExecStart=/usr/bin/python /foo/bar
+ExecStart=/bin/sh -c 'date >> /tmp/cam_snap.service.t'
+User=rudolf
+Group=users

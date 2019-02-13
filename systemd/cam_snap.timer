@@ -1,0 +1,9 @@
+[Unit]
+Description=Run cam_snap.service every 10 seconds
+
+[Timer]
+OnCalendar=*:*:0/10
+AccuracySec=1us
+
+[Install]
+WantedBy=timers.target
