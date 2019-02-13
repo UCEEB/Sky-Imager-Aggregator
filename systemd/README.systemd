@@ -1,0 +1,9 @@
+sudo cp sky_image_aggr-send_storage.service /lib/systemd/system/
+sudo cp sky_image_aggr-send_storage.timer /lib/systemd/system/
+sudo systemctl enable sky_image_aggr-send_storage.timer
+sudo systemctl start sky_image_aggr-send_storage.timer
+
+###
+sudo systemctl list-timers --all
+sudo journalctl -u sky_image_aggr-send_storage.timer
+sudo journalctl -u sky_image_aggr-send_storage.service

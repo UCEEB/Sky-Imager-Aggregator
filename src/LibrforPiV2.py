@@ -83,13 +83,13 @@ def is_daytime(camera_latitude,camera_longitude,camera_altitude,print_time ):
     return False
 
 #unused
-def get_SunR_SunS(camera_latitude,camera_longitude,camera_altitude,print_time ):
+def get_SunR_SunS(camera_latitude,camera_longitude,camera_altitude,print_time,date=dt.datetime.now(dt.timezone.utc).date() ):
     a = Astral()
     a.solar_depression = 'civil'
     l = Location(('custom', 'region', camera_latitude, camera_longitude, "UTC", camera_altitude))    
-    now = dt.datetime.now(dt.timezone.utc)
+    #date = dt.datetime.now(dt.timezone.utc)
     #now = dt.datetime(2019,2,6,16,20,0,0,dt.timezone.utc)
-    sun = l.sun(date=now.date())
+    sun = l.sun(date=date)
     return sun['sunrise'], sun['sunset']
 
 def save_to_storage(img,path,name,logger):
@@ -123,6 +123,7 @@ class config_obj:
             self.image_quality=config.getint('SETTING','image_quality')
             self.crop= [int(x) for x in config.get('SETTING','crop').split(",")] #map(int, config.get('SETTING','crop').split(","))
             self.mask_path=config.get('SETTING','mask_path')
+            self.cap_mod=config.get('SETTING','cap_mod')
 
             
             '''unused
@@ -170,3 +171,17 @@ def set_log_to_file(log_path,log_to_console,logger,console_logger):
     
     if not log_to_console:
             logger.removeHandler(console_logger)#disable console logging
+    return hdlr
+
+
+def set_log_to_file_new_day(log_path,logger,hdlr):  
+    logger.removeHandler(hdlr)
+    try:
+        hdlr = logging.FileHandler(log_path+'/'+str(dt.date.today())+'.log')
+        hdlr.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+        logger.addHandler(hdlr) 
+    except Exception as e:
+        logger.error('log file error : '+str(e))
+    return hdlr
+    
+

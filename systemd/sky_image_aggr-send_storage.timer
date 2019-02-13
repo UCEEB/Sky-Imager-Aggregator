@@ -1,0 +1,8 @@
+[Unit]
+Description=Run sky_image_aggr-send_storage.service hourly
+
+[Timer]
+OnCalendar=*:0:0
+
+[Install]
+WantedBy=timers.target
