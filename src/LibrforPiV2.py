@@ -4,7 +4,6 @@
 import cv2
 import numpy as np
 import datetime as dt
-from copy import copy
 import base64
 import json
 import hashlib, hmac
