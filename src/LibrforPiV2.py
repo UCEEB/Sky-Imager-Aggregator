@@ -1,13 +1,15 @@
 # Author: Barbara Stefanovska 
 # ...
 # This library includes all the functions needed for the RaspberryPi
-import cv2
-import numpy as np
-import datetime as dt
-import base64
-import json
-import hashlib, hmac
+
 import requests
+import hashlib, hmac
+import json
+import base64
+import numpy as np
+import cv2
+import datetime as dt
+
 from astral import Astral, Location
 import configparser
 import logging 
@@ -59,10 +61,10 @@ def upload_json(image,file_time,server):
     try:
         json_response=json.loads(response.text)
     except Exception as e:
-            raise Exception(response)
+        raise Exception(response)
 
     if json_response['status']!='ok':
-            raise Exception(json_response['message'])           
+        raise Exception(json_response['message'])           
     return json_response
 
     
@@ -78,7 +80,7 @@ def is_daytime(camera_latitude,camera_longitude,camera_altitude,print_time ):
     if print_time:
         print('sunrise '+str(sun['sunrise'])+"  sunset "+str(sun['sunset'])+"UTC\n")
     if(sun['sunrise']<now and sun['sunset']>now):
-       return True
+        return True
     return False
 
 #unused
@@ -123,6 +125,8 @@ class config_obj:
             self.crop= [int(x) for x in config.get('SETTING','crop').split(",")] #map(int, config.get('SETTING','crop').split(","))
             self.mask_path=config.get('SETTING','mask_path')
             self.cap_mod=config.get('SETTING','cap_mod')
+            self.added_time=config.getint('SETTING','added_time')
+
 
             
             '''unused
@@ -169,7 +173,7 @@ def set_log_to_file(log_path,log_to_console,logger,console_logger):
         logger.error('log file error : '+str(e))
     
     if not log_to_console:
-            logger.removeHandler(console_logger)#disable console logging
+        logger.removeHandler(console_logger)#disable console logging
     return hdlr
 
 

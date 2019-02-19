@@ -26,7 +26,8 @@ def add_Image_job(sched,conf,logger,date=dt.datetime.now(dt.timezone.utc).date()
     if( dt.datetime.now(dt.timezone.utc)>sunset):
         date =dt.date.today() + dt.timedelta(days=1)
         sunrise, sunset = lfp.get_SunR_SunS(conf.camera_latitude,conf.camera_longitude,conf.camera_altitude,conf.debug_mode,date)
-
+    sunrise-=dt.timedelta(minutes=conf.added_time);
+    sunset+=dt.timedelta(minutes=conf.added_time);
     sched.add_job(processImage, 'cron',[sched,conf,logger], second ='*/'+conf.cap_mod,start_date =sunrise,end_date =sunset,name=str(date))
     ls=sched.get_jobs()
     logger.info('add job '+get_job_parametr(ls[len(ls)-1]))
@@ -71,9 +72,7 @@ def processImage(sched,conf,logger):
     if(len(ls)==0):
         date =dt.date.today() + dt.timedelta(days=1)
         add_Image_job(sched,conf,logger,date)
-        logger.info('add new job for '+str(date)) 
-
-
+        logger.info('added new job for '+str(date)) 
     return
 
 
@@ -115,6 +114,4 @@ def main():
 
 if __name__ == '__main__':
     #sys.stdout.write("Running program...")
-    
-
-        main()
+    main()
