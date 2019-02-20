@@ -1,13 +1,14 @@
-# Author: Barbara Stefanovska and Jan Havrlant
-#todo
-#optimalize daytime test
+## LibrforPiV2
+# @package   SkyImagerV2
+# @details   Script at a given interval access the camera, get image and try to send to remote storage. 
+#If there is no internet connection, script save image to local storage. These images try send to remote sotage SendStorageV2.py
+# @version   2.0
+# @author   Jan Havrlant and Barbara Stefanovska
+#  
 
-#import time
 import LibrforPiV2 as lfp
-#import os
 import cv2
 import datetime as dt
-#import sys
 import configparser 
 import logging 
 import os
@@ -15,11 +16,20 @@ import os
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 
+## Creates text string with information about given job for save to log file
+# @param[in] job job object
+# @return text string with information about job
 def get_job_parametr(job):
     paremetr=''
     paremetr+='name '+job.name+' start time '+str(job.trigger.start_date)+' end time '+str(job.trigger.end_date)+' '+str(job.trigger)
     return paremetr
 
+## functon adds job to scheduler object for given day
+# Job starts at sunrise and finish at sunset
+# @param[in] sched apscheduler object
+# @param[in] conf object with configuration
+# @param[in] logger logger object
+# @param[in] date date of jobs, default value is today
 def add_Image_job(sched,conf,logger,date=dt.datetime.now(dt.timezone.utc).date()):
     
     sunrise, sunset = lfp.get_SunR_SunS(conf.camera_latitude,conf.camera_longitude,conf.camera_altitude,conf.debug_mode,date)
@@ -32,6 +42,10 @@ def add_Image_job(sched,conf,logger,date=dt.datetime.now(dt.timezone.utc).date()
     ls=sched.get_jobs()
     logger.info('add job '+get_job_parametr(ls[len(ls)-1]))
 
+## owns core of the script that gets image from camera and sends to remote server
+# @param[in] sched apscheduler object
+# @param[in] conf object with configuration
+# @param[in] logger logger object
 def processImage(sched,conf,logger):
     #inicialize camera
     cap = cv2.VideoCapture(conf.cap_url) # OpenCV functions don't throw errors, they print out a message, there are some errors that can't be caught
@@ -55,7 +69,7 @@ def processImage(sched,conf,logger):
 
         success = True
         try:
-            #try upload image to server
+            #attempt to send an image to the server
             response=lfp.upload_json(buffer,image_time,conf.server) 
         except Exception as e:
             logger.error('upload to server error : '+str(e))
@@ -76,7 +90,10 @@ def processImage(sched,conf,logger):
     return
 
 
-
+## auxiliary function that checks whether the main job is running
+# @param[in] sched apscheduler object
+# @param[in] conf object with configuration
+# @param[in] logger logger object
 def control_job(sched,conf,logger):
     conf.log_file_handler = lfp.set_log_to_file_new_day(conf.log_path,logger,conf.log_file_handler)
     ls=sched.get_jobs()
@@ -86,6 +103,7 @@ def control_job(sched,conf,logger):
         logger.error('some problem, I must add extra job for '+str(dt.date.today()))
         
 
+## entry point of script that create main and auxiliary job
 def main():
 
     #inicialize logging
@@ -99,19 +117,16 @@ def main():
     #inicialize log to file
     conf.log_file_handler= lfp.set_log_to_file(conf.log_path,conf.log_to_console,logger,console_logger)
 
+    #create jobs
+    main_sched = BlockingScheduler()
+    auxiliary_sched = BackgroundScheduler()
 
-    sched = BlockingScheduler()
-    
+    auxiliary_sched.add_job(control_job, 'cron',[main_sched,conf,logger], hour ='*', minute ='30',second ='5')
+    auxiliary_sched.start()
 
-    sched1 = BackgroundScheduler()
-    sched1.add_job(control_job, 'cron',[sched,conf,logger], hour ='*', minute ='30',second ='5')
-    sched1.start()
-    
-   
-    add_Image_job(sched,conf,logger)
-    sched.start()
+    add_Image_job(main_sched,conf,logger)
+    main_sched.start()
 
 
 if __name__ == '__main__':
-    #sys.stdout.write("Running program...")
     main()
