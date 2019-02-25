@@ -102,7 +102,10 @@ def get_SunR_SunS(camera_latitude,camera_longitude,camera_altitude,print_time,da
     l = Location(('custom', 'region', camera_latitude, camera_longitude, "UTC", camera_altitude))    
     #date = dt.datetime.now(dt.timezone.utc)
     #now = dt.datetime(2019,2,6,16,20,0,0,dt.timezone.utc)
-    sun = l.sun(date=date)
+    try:
+        sun = l.sun(date=date)
+    except Exception as e:
+        return dt.datetime.combine(date,  dt.time(3,0,0,0,dt.timezone.utc)),dt.datetime.combine(date,  dt.time(21,0,0,0,dt.timezone.utc))
     return sun['sunrise'], sun['sunset']
 
 ## Functon saves image to local storage
