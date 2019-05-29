@@ -53,7 +53,7 @@ def processImage(sched,conf,logger):
         logger.error('camera connection error ')
         return
 
-    image_time=dt.datetime.now()
+    image_time=dt.datetime.utcnow()  
 
     # Opening camera feed:
     logger.info("Download image from camera")

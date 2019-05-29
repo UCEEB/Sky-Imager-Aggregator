@@ -59,7 +59,7 @@ def http(url, data):
 def upload_json(image,file_time,server):
 
     skyimage = base64.b64encode(image).decode('ascii')
-    dateString = file_time.strftime("%Y-%m-%dT%H:%M:%S+02:00")
+    dateString = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
 
     id = 72
