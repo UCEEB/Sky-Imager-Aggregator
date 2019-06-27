@@ -12,10 +12,13 @@ import base64
 import numpy as np
 import cv2
 import datetime as dt
+import os
 
 from astral import Astral, Location
 import configparser
 import logging 
+import csv
+import socket
 
 
 ## Apply mask to the image
@@ -56,14 +59,14 @@ def http(url, data):
 # @param[in] file_time image file time
 # @param[in] server remote server url
 # @return respose of server
-def upload_json(image,file_time,server):
+def upload_json(image,file_time,server, conf):
 
     skyimage = base64.b64encode(image).decode('ascii')
     dateString = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
 
-    id = 72
-    key = b"cuFo4Fx2PHQduNrE7TeKVFhVXXcyvHLufQZum0RkX8yGSK9naZptuvqz2zaHi1s0"
+    id = conf.id # = 72
+    key=conf.key #= b"cuFo4Fx2PHQduNrE7TeKVFhVXXcyvHLufQZum0RkX8yGSK9naZptuvqz2zaHi1s0"
 
     data = {
         "status": "ok",
@@ -78,6 +81,47 @@ def upload_json(image,file_time,server):
     url =  server + signature
     
     response = http(url, jsondata)
+    try:
+        json_response=json.loads(response.text)
+    except Exception as e:
+        raise Exception(response)
+
+    if json_response['status']!='ok':
+        raise Exception(json_response['message'])           
+    return json_response
+
+def upload_bson(image,file_time,server,conf):
+
+    #skyimage = base64.b64encode(image).decode('ascii')
+    dateString = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+
+    id = conf.id
+    key = conf.key 
+
+    data = {
+        "status": "ok",
+        "id": id,
+        "time": dateString,
+        "coding": "none",
+        #"data": image.tostring()
+         }
+    jsondata = json.dumps(data)
+    signature = hmac_sha256(jsondata, key)
+    #signature=hmac.new(key,jsondata, digestmod=hashlib.sha256).hexdigest()
+
+
+    
+    #response = http(url, bsondata)
+    if isinstance(image, str) or isinstance(image, bytes):
+        files = [('image', image), ('json',jsondata)]
+    else:
+        files = [('image', image.tostring()), ('json',jsondata)]
+    #postdata = {
+    #    "data": data
+    #}
+    
+    response=requests.post(server + signature, files=files)
     try:
         json_response=json.loads(response.text)
     except Exception as e:
@@ -110,16 +154,27 @@ def get_SunR_SunS(camera_latitude,camera_longitude,camera_altitude,print_time,da
 
 ## Functon saves image to local storage
 # @param[in] img image object to save
-# @param[in] path path to local storage
+# @param[in] path1 path to local storage
+# @param[in] path2 path to alternative local storage
 # @param[in] name name of saved image
 # @param[in] logger logger object
-def save_to_storage(img,path,name,logger):
+def save_to_storage(img,conf,name,logger):
+    path=get_path_to_storage(conf)
+    if conf.autonomous_mode:
+        try:
+            img.tofile(path+'/'+name)
+        except Exception as e:
+            logger.error('save to local storage error : '+str(e))
+        else:
+            logger.info('image '+path+'/'+name+' saved to storage' )
+            return
+        
     try:
-        img.tofile(path+'/'+name)
+        img.tofile(conf.path_storage+'/'+name)
     except Exception as e:
         logger.error('save to local storage error : '+str(e))
     else:
-        logger.info('image '+path+'/'+name+' saved to storage' )
+        logger.info('image '+conf.path_storage+'/'+name+' saved to storage' )
 
 ## class consist of configuration variables of application that are read from config.ini
 class config_obj:
@@ -128,10 +183,12 @@ class config_obj:
         config = configparser.ConfigParser()
    
         try:
+            self.counter=-1
             config.read(path_config)
 
             self.cap_url = config.get('SETTING','cap_url')
             self.path_storage = config.get('SETTING','path_storage')
+
             self.server = config.get('SETTING','upload_server')
             self.log_path = config.get('SETTING','log_path')
             self.log_to_console=config.getboolean('SETTING','log_to_console')
@@ -144,8 +201,36 @@ class config_obj:
             self.image_quality=config.getint('SETTING','image_quality')
             self.crop= [int(x) for x in config.get('SETTING','crop').split(",")] #map(int, config.get('SETTING','crop').split(","))
             self.mask_path=config.get('SETTING','mask_path')
-            self.cap_mod=config.get('SETTING','cap_mod')
+            self.cap_mod=config.getint('SETTING','cap_mod')
             self.added_time=config.getint('SETTING','added_time')
+            self.id=config.get('SETTING','camera_id')
+            self.key=bytes(config.get('SETTING','sha256_key'),"ascii")
+
+            self.autonomous_mode=config.getboolean('SETTING','autonomous_mode')
+            self.light_sensor=config.getboolean('SETTING','light_sensor')
+            if self.autonomous_mode:
+                self.GSM_path_storage_usb1 = config.get('GSM','path_storage_usb1')
+                self.GSM_path_storage_usb2 = config.get('GSM','path_storage_usb2')
+                self.GSM_port = config.get('GSM','port')
+                self.GSM_phone_no = config.get('GSM','phone_no')
+                self.GSM_send_thumbnail=config.getboolean('GSM','send_thumbnail')
+                self.GSM_thumbnail_size=config.getint('GSM','thumbnail_size')
+                self.GSM_thumbnail_upload_server=config.get('GSM','thumbnail_upload_server')
+                self.GSM_thumbnail_upload_time_interval=config.getint('GSM','thumbnail_upload_time_interval')
+                self.GSM_time_sync=config.getboolean('GSM','time_sync')
+                self.GSM_send_log=config.getboolean('GSM','send_log')
+                self.GSM_log_upload_server=config.get('GSM','log_upload_server')
+                self.GSM_ppp_config_file=config.get('GSM','ppp_config_file')
+
+            if self.light_sensor:
+                self.MODBUS_port = config.get('MODBUS','port')
+                self.MODBUS_log_temperature = config.getboolean('MODBUS','log_temperature')
+                self.MODBUS_sensor_address = config.getint('MODBUS','sensor_address')
+                self.MODBUS_baudrate = config.getint('MODBUS','baudrate')
+                self.MODBUS_bytesize = config.getint('MODBUS','bytesize')
+                self.MODBUS_parity = config.get('MODBUS','parity')
+                self.MODBUS_stopbits = config.getint('MODBUS','stopbits')
+                self.MODBUS_csv_name = config.get('MODBUS','csv_name')
 
         except Exception as e:
             logger.critical('config file error : '+str(e))
@@ -196,5 +281,50 @@ def set_log_to_file_new_day(log_path,logger,hdlr):
     except Exception as e:
         logger.error('log file error : '+str(e))
     return hdlr
-    
+
+def get_path_to_storage(conf):
+    path=conf.path_storage
+    if conf.autonomous_mode:
+        if  os.access(conf.GSM_path_storage_usb1,os.W_OK):
+            path=conf.GSM_path_storage_usb1
+        elif os.access(conf.GSM_path_storage_usb2,os.W_OK):
+            path=conf.GSM_path_storage_usb2
+    return path
+
+
+def save_irradiance_csv(conf,time,irradinace ,ext_temperature,cell_temperature,logger):
+    path=get_path_to_storage(conf)
+    try:
+        f=open(path+'/'+conf.MODBUS_csv_name, 'a',newline='')
+        csvFile = csv.writer(f, delimiter=';', quotechar='\'', quoting=csv.QUOTE_MINIMAL)
+        if conf.MODBUS_log_temperature:
+            csvFile.writerow([time,irradinace ,ext_temperature,cell_temperature]) 
+        else:
+            csvFile.writerow([time,irradinace ]) 
+        f.close()
+    except Exception as e:
+        logger.error('csv save to local storage error : '+str(e))
+    else:
+        logger.debug('csv row saved in'+path+'/'+conf.MODBUS_csv_name )
+        logger.info('irradiance saved '+str(irradinace))
+
+def get_freespace_storage(conf):
+    path=get_path_to_storage(conf)
+    info=os.statvfs(path)
+    freespace=info.f_bsize*info.f_bfree/1048576
+    return '%.0f MB' % freespace
+
+def test_internet_connection(logger,host="8.8.8.8", port=53, timeout=3):
+  """
+  Host: 8.8.8.8 (google-public-dns-a.google.com)
+  OpenPort: 53/tcp
+  Service: domain (DNS/TCP)
+  """
+  try:
+    socket.setdefaulttimeout(timeout)
+    socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+    return True
+  except Exception as e:
+    logger.error('no internet connection : '+str(e))
+    return False
 
