@@ -26,7 +26,8 @@ def get_job_parametr(job):
     paremetr+='name '+job.name+' start time '+str(job.trigger.start_date)+' end time '+str(job.trigger.end_date)+' '+str(job.trigger)
     return paremetr
 
-## functon adds job to scheduler object for given day
+## functon adds job to scheduler object for given day 
+# Send SMS on end of day in autonomous mode
 # Job starts at sunrise and finish at sunset
 # @param[in] sched apscheduler object
 # @param[in] conf object with configuration
@@ -34,7 +35,8 @@ def get_job_parametr(job):
 # @param[in] date date of jobs, default value is today
 def add_Image_job(sched,conf,logger,date=dt.datetime.now(dt.timezone.utc).date()):
     if conf.autonomous_mode:
-        
+        if conf.thread.is_alive()==False:
+            conf.thread.start()
         if conf.counter!=-1:  #end of day
             if conf.GSM_phone_no!="":
                 SMS_text="SkyImg end, df "+lfp.get_freespace_storage(conf)+' saved '+str(conf.counter)+' img, time '+dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
@@ -81,7 +83,7 @@ def processImage(sched,conf,logger):
     image_time=dt.datetime.utcnow()
     if conf.light_sensor:
         try:
-            irradinace ,ext_temperature,cell_temperature =GSM_modbus.get_data_irradiance(conf.MODBUS_port,conf.MODBUS_sensor_address,conf.MODBUS_baudrate ,conf.MODBUS_bytesize,conf.MODBUS_parity,conf.MODBUS_stopbits)
+            irradinace ,ext_temperature,cell_temperature =GSM_modbus.get_data_irradiance(conf.MODBUS_port,conf.MODBUS_sensor_address,conf.MODBUS_baudrate ,conf.MODBUS_bytesize,conf.MODBUS_parity,conf.MODBUS_stopbits,logger)
             logger.debug('irradiance '+str(irradinace))
             time_csv=image_time.strftime("%y-%m-%d_%H-%M-%S")
             lfp.save_irradiance_csv(conf,time_csv,irradinace ,ext_temperature,cell_temperature,logger)
@@ -119,9 +121,10 @@ def processImage(sched,conf,logger):
             success = False
         if success==False or conf.debug_mode==True:
             #save image to storage
-            lfp.save_to_storage(buffer,conf,image_time.strftime(conf.filetime_format),logger)
-            if conf.autonomous_mode:
+            lfp.save_to_storage(buffer,conf,image_time.strftime(conf.filetime_format),logger,image_time)
+            if conf.autonomous_mode:  
                 conf.counter = conf.counter+1
+                #send image thumbnail in given time interval
                 if conf.GSM_send_thumbnail and  int(image_time.timestamp())%conf.GSM_thumbnail_upload_time_interval<conf.cap_mod:
                     logger.info("Free space: "+lfp.get_freespace_storage(conf))
                     res = cv2.resize(image, dsize=(conf.GSM_thumbnail_size, conf.GSM_thumbnail_size), interpolation=cv2.INTER_NEAREST)
@@ -135,7 +138,7 @@ def processImage(sched,conf,logger):
     else:        
         logger.error('Camera unavailable. -> Possible solution: Reboot RaspberryPi with "sudo reboot" \n')
 
-
+    #check if job is scheduled, for sure
     ls=sched.get_jobs()
     if(len(ls)==0):
         date =dt.date.today() + dt.timedelta(days=1)
@@ -179,8 +182,9 @@ def main():
                 log_handler.setLevel(logging.INFO)
                 logger.addHandler(log_handler)
                 conf.log_internet=log_handler
-            thread = threading.Thread(target=GSM_modbus.GSM_worker,args=(conf,logger))
-            thread.start()
+            #start thread to GSM modem request
+            conf.thread = threading.Thread(target=GSM_modbus.GSM_worker,args=(logger,conf))
+            conf.thread.start()
                 
 
             
