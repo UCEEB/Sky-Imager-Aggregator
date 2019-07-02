@@ -1,9 +1,9 @@
 ## LibrforPiV2
-# @package   SkyImagerV2
-# @details   Script at a given interval access the camera, get image and try to send to remote storage. 
-#If there is no internet connection, script save image to local storage. These images try send to remote sotage SendStorageV2.py
-# @version   2.0
-# @author   Jan Havrlant and Barbara Stefanovska
+# @package   SkyImagerV1auto
+# @details   Script at a given interval access the camera, get image and storage to local storage. 
+# In given interval send thumbnail and log file to remote storage via GSM modem
+# @version   1.0
+# @author   Jan Havrlant
 #  
 
 import LibrforPiV2 as lfp
@@ -130,9 +130,8 @@ def processImage(sched,conf,logger):
                     res = cv2.resize(image, dsize=(conf.GSM_thumbnail_size, conf.GSM_thumbnail_size), interpolation=cv2.INTER_NEAREST)
                     is_success, buffer = cv2.imencode(".jpg", res,[int(cv2.IMWRITE_JPEG_QUALITY), conf.image_quality])
                     GSM_modbus.qu.put(GSM_modbus.C_send_thumbnail(logger,conf,buffer,image_time))
-                    #upload_thread = threading.Thread(target=GSM_modbus.upload_thumbnail, args=(logger,conf,buffer,image_time))
-                    #upload_thread.start()
-                #print ("saved fo file ",conf.counter)
+                    
+                
         if success==True:
             logger.info('upload to server OK' ) 
     else:        
