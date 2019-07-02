@@ -13,11 +13,14 @@ import gzip
 if os.name != 'nt':
     import serial
     import RPi.GPIO as GPIO
-    import minimalmodbus
+    import minimalmodbus1
 
 
-#send sms_text to phone_num
-#port is dev/ttyS0 or dev/ttySMS0 
+##check GSM modem state, if is ON or OFF
+#port is dev/ttyS0 or dev/ttyUSB0 
+# @param[in] port port is dev/ttyS0 or dev/ttyUSB0 or dev/ttyAMA0
+# @param[in] logger logger object
+# @return False if GSM modem is OFF and True if GSM modem is ON
 def _get_GSM_state(port,logger):
     logger.debug('test modem state')
     _disable_ppp(logger)
@@ -40,19 +43,25 @@ def _get_GSM_state(port,logger):
     logger.debug('modem is Off '+str(r))
     return False
 
+##switch GSM modem by pin 
+#port is dev/ttyS0 or dev/ttyUSB0 or dev/ttyAMA0
+# @param[in] logger logger object
 def _GSM_switch(logger):
-    
+    pin=12 #pin wchich is switch
     logger.debug("switching modem")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(12, GPIO.OUT)
-    GPIO.output(12, GPIO.LOW)
+    GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, GPIO.LOW)
     time.sleep(3)
-    GPIO.output(12, GPIO.HIGH)	
+    GPIO.output(pin, GPIO.HIGH)	
     #GPIO.cleanup() #pin must leave set as outpot and not reset to input
 
 
-
+##switch GSM modem ON  
+# @param[in] port port is dev/ttyS0 or dev/ttyUSB0 or dev/ttyAMA0
+# @param[in] logger logger object
+# @return False if GSM modem is OFF and True if GSM modem is ON
 def _GSM_switch_on(port,logger):
     logger.debug('switch modem ON')
     if _get_GSM_state(port,logger)==True:
@@ -69,6 +78,10 @@ def _GSM_switch_on(port,logger):
             return False
     return False
 
+##switch GSM modem OFF  
+# @param[in] port is dev/ttyS0 or dev/ttyUSB0 or dev/ttyAMA0
+# @param[in] logger logger object
+# @return False if GSM modem is ON and True if GSM modem is OFF
 def _GSM_switch_off(port,logger):
     logger.debug('switch modem OFF')
     if _get_GSM_state(port,logger)==False:
@@ -79,6 +92,12 @@ def _GSM_switch_off(port,logger):
     else:
         return False
 
+##Send SMS to phone_num
+# @param[in] phone_num phone number string
+# @param[in] SMS_text text to send
+# @param[in] port port is dev/ttyS0 or dev/ttyUSB0 
+# @param[in] logger logger object
+# @return data which response GSM modem
 def _sendSMS(phone_num,SMS_text,port,logger):
     _disable_internet(logger)
     _GSM_switch_on(port,logger)
@@ -109,28 +128,35 @@ def _sendSMS(phone_num,SMS_text,port,logger):
         return "Exception " +str(e)
     return data1
 
-def get_data_irradiance(port,address,baudrate ,bytesize ,parity,stopbits  ):
-    instrument = minimalmodbus.Instrument(port, address) # port name, slave address (in decimal)
-    #instrument.debug = True
-    instrument.serial.baudrate = baudrate 
-    instrument.serial.bytesize = bytesize 
-    instrument.serial.parity = parity
-    instrument.serial.stopbits = stopbits
-    instrument.serial.timeout  = 0.1   # seconds
-    time.sleep(0.5)
+##Get irradiance and temperature from Light sensor
+# @param[in] port port is dev/ttyS0 or dev/ttyUSB0 
+# @param[in] address modbus address
+# @param[in] baudrate port baudrate
+# @param[in] bytesize number of data bits
+# @param[in] parity enable parity checking
+# @param[in] stopbits number of stop bits
+# @param[in] logger logger object
+# @return irradiance, temperature of external sensor, internal temperature
+def get_data_irradiance(port,address,baudrate ,bytesize ,parity,stopbits ,logger ):
+    #logger.debug(str(port)+" "+str(address)+" "+str(baudrate) +" "+str(bytesize) +" "+str(parity)+" "+str(stopbits))
+    #instrument = minimalmodbus.Instrument(port, address) # port name, slave address (in decimal)
+    instrument = minimalmodbus1.Instrument(address,port ,baudrate,bytesize,parity,stopbits,False,True) # port name, slave address (in decimal)
+
+    #time.sleep(0.5)
     irradinace = instrument.read_register(0,1, 4,False)
     ext_temperature = instrument.read_register(8,1, 4,True)
     cell_temperature =instrument.read_register(7,1, 4,True)
+
     return irradinace , ext_temperature, cell_temperature
 
-def _test_ppp():
-    proc = subprocess.Popen(["ifconfig"], stdout=subprocess.PIPE)
-    (out, err) = proc.communicate()
-    if out.find(b'ppp0')!=-1:
-        return True
-    return False
 
 
+##Function wait until start ppp connection
+# to work you must add row to script /etc/ppp/ip-up
+# echo "pppd UP" > /tmp/pppipe
+# @param[in] logger logger object
+# @param[in] timeout time to wait connection is establish
+# @return True if connection is establish and False if connection is not establish until time out
 def _wait_for_start(logger,timeout):
     pipe_path = "/tmp/pppipe"
     if not os.path.exists(pipe_path):
@@ -158,7 +184,8 @@ def _wait_for_start(logger,timeout):
                 break
     return False
 
-
+##Function start ppp connection
+# @param[in] GSM_ppp_config_file name of file in /etc/ppp/peers where is ppp configuration
 def _enable_ppp(port,logger,GSM_ppp_config_file):
     if _GSM_switch_on(port,logger)==False:
         logger.error('GSM modem not switch on')
@@ -189,18 +216,28 @@ def _enable_ppp(port,logger,GSM_ppp_config_file):
     logger.error('no ppp enabled')
     return False
 
-
+##Test if pppd process is running
 def _test_ppp_pr():
     if os.system('ps -A|grep pppd >null')==0:
         return True
     return False
 
+##Test if pppd process is running
+def _test_ppp():
+    proc = subprocess.Popen(["ifconfig"], stdout=subprocess.PIPE)
+    (out, err) = proc.communicate()
+    if out.find(b'ppp0')!=-1:
+        return True
+    return False
+
+##Disable ppp process
 def _disable_ppp(logger):
     logger.debug('disabling ppp')
     os.system('sudo killall pppd 2>null')
     time.sleep(1)
 
-
+##Start internet connection via GSM modem
+# @param[in] GSM_ppp_config_file name of file in /etc/ppp/peers where is ppp configuration
 def _enable_internet(port,logger,GSM_ppp_config_file):
     if lfp.test_internet_connection(logger)==True:
             logger.debug('internet connection OK')
@@ -227,10 +264,12 @@ def _enable_internet(port,logger,GSM_ppp_config_file):
            
     logger.error('No internet connection')
     return False
-
+##Stop internet connection via GSM modem
 def _disable_internet(logger):
     _disable_ppp(logger)
 
+##Try time synchronization
+# @param[in] GSM_ppp_config_file name of file in /etc/ppp/peers where is ppp configuration
 def synch_time(port,logger,GSM_ppp_config_file):
     #_disable_ppp()
     if _enable_internet(port,logger,GSM_ppp_config_file)==False:
@@ -249,7 +288,11 @@ def synch_time(port,logger,GSM_ppp_config_file):
             logger.error('time sync error')
             break
     #disable_internet(logger)
-    
+
+
+##Upload thumbnail to server
+# @param[in] image thumbnail image
+# @param[in] image_time creation time of image
 def _upload_thumbnail(logger,conf,image,image_time):
 
     logger.debug('start upload thumbnail to server' )
@@ -275,6 +318,8 @@ def _upload_thumbnail(logger,conf,image,image_time):
     
     logger.debug('end upload thumbnail to server' ) 
 
+##Upload log file to server
+# @param[in] log string with uploaded log rows
 def _upload_logfile(logger,conf,log):
 
     logger.debug('start upload log to server' )
@@ -300,20 +345,23 @@ def _upload_logfile(logger,conf,log):
     
     logger.debug('end upload log to server' ) 
 
-
+##Processes request to GSM modem
 def GSM_worker(logger,conf):
 
     while True:
+        try:
+            item = qu.get() #block  until an item is available
+            logger.debug('execute command from queue')
+            item.exec()
+            qu.task_done()
+        except Exception as e:
+            logger.error('GSM worker error: '+str(e))
 
-        item = qu.get() #block  until an item is available
-        item.exec()
-        qu.task_done()
 
-
-
+## queue of requests to GSM modem
 qu = queue.Queue()
 
-
+##Class store request to send SMS
 class C_send_SMS:
     def __init__(self, phone_num,SMS_text,port,logger):
          self.phone_num=phone_num
@@ -325,7 +373,7 @@ class C_send_SMS:
         self.logger.debug('Send SMS return'+re.decode("ascii") )
         
         
-
+##Class to store request to upload thumbnail
 class C_send_thumbnail:
     def __init__(self,logger,conf,image,image_time):
         self.logger=logger
@@ -335,6 +383,7 @@ class C_send_thumbnail:
     def exec(self):
         _upload_thumbnail(self.logger,self.conf,self.image,self.image_time)
 
+##Class to store request to synchronization time
 class C_synch_time:
     def __init__(self, port,logger,GSM_ppp_config_file):
         self.port=port
@@ -343,6 +392,7 @@ class C_synch_time:
     def exec(self):
         synch_time(self.port,self.logger,self.GSM_ppp_config_file)
 
+##Class to store request to upload log to server
 class C_send_log:
     def __init__(self,logger,conf,log):
         self.logger=logger
@@ -352,6 +402,7 @@ class C_send_log:
     def exec(self):
         _upload_logfile(self.logger,self.conf,self.log)
 
+##Class to store request to switch OFF modem
 class C_sleep:
     def __init__(self,logger,port):
         self.logger=logger
@@ -360,8 +411,11 @@ class C_sleep:
     def exec(self):
         _GSM_switch_off(self.port,self.logger)
 
+##Class derive logging.Handler
+# special logger, which store log rows and upload its to server if achieves given value of rows
 class TailLogHandler(logging.Handler):
 
+# @param[in] log_queue number of rows which is uploaded together on server
     def __init__(self, log_queue,logger,conf):
         logging.Handler.__init__(self)
         self.store=""
@@ -376,6 +430,7 @@ class TailLogHandler(logging.Handler):
         if self.count>=self.log_queue:
             self.send_to_server()
 
+## upload log rows to server
     def send_to_server(self):
         if self.count>0:
             self.count=0

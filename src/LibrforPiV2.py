@@ -58,6 +58,7 @@ def http(url, data):
 # @param[in] image masked image intended for sending
 # @param[in] file_time image file time
 # @param[in] server remote server url
+# @param[in] conf configuration object
 # @return respose of server
 def upload_json(image,file_time,server, conf):
 
@@ -65,8 +66,8 @@ def upload_json(image,file_time,server, conf):
     dateString = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
 
-    id = conf.id # = 72
-    key=conf.key #= b"cuFo4Fx2PHQduNrE7TeKVFhVXXcyvHLufQZum0RkX8yGSK9naZptuvqz2zaHi1s0"
+    id = conf.id 
+    key=conf.key 
 
     data = {
         "status": "ok",
@@ -154,12 +155,13 @@ def get_SunR_SunS(camera_latitude,camera_longitude,camera_altitude,print_time,da
 
 ## Functon saves image to local storage
 # @param[in] img image object to save
-# @param[in] path1 path to local storage
-# @param[in] path2 path to alternative local storage
+# @param[in] conf configuration object
 # @param[in] name name of saved image
 # @param[in] logger logger object
-def save_to_storage(img,conf,name,logger):
-    path=get_path_to_storage(conf)
+def save_to_storage(img,conf,name,logger,image_time):
+    path=get_path_to_storage(conf)+'/'+image_time.strftime("%y-%m-%d")
+    if not os.path.exists(path):
+        os.makedirs(path)
     if conf.autonomous_mode:
         try:
             img.tofile(path+'/'+name)
@@ -281,7 +283,7 @@ def set_log_to_file_new_day(log_path,logger,hdlr):
     except Exception as e:
         logger.error('log file error : '+str(e))
     return hdlr
-
+## Detect if path to USB sotage is valid
 def get_path_to_storage(conf):
     path=conf.path_storage
     if conf.autonomous_mode:
@@ -291,7 +293,13 @@ def get_path_to_storage(conf):
             path=conf.GSM_path_storage_usb2
     return path
 
-
+## Save irradiance value and temperatures to CSV file
+# @param[in] conf configuration object
+# @param[in] time time of irradiance measure
+# @param[in] irradinace value of irradiance
+# @param[in] ext_temperature 
+# @param[in] cell_temperature device temperature
+# @param[in] logger logger object
 def save_irradiance_csv(conf,time,irradinace ,ext_temperature,cell_temperature,logger):
     path=get_path_to_storage(conf)
     try:
@@ -308,12 +316,14 @@ def save_irradiance_csv(conf,time,irradinace ,ext_temperature,cell_temperature,l
         logger.debug('csv row saved in'+path+'/'+conf.MODBUS_csv_name )
         logger.info('irradiance saved '+str(irradinace))
 
+##Get free space of local storage
 def get_freespace_storage(conf):
     path=get_path_to_storage(conf)
     info=os.statvfs(path)
     freespace=info.f_bsize*info.f_bfree/1048576
     return '%.0f MB' % freespace
 
+##Internet connection test
 def test_internet_connection(logger,host="8.8.8.8", port=53, timeout=3):
   """
   Host: 8.8.8.8 (google-public-dns-a.google.com)
