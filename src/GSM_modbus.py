@@ -1,5 +1,10 @@
-#!/usr/bin/python3
-# Filename: text.py
+## GSM modbus library
+# @package   SkyImagerV1auto
+# @details    Library includes the functions needed the RaspberryPi for work GSM modem and modbus irradiance sensor
+#
+# @version   1.0
+# @author   Jan Havrlant
+#  
 
 import time
 import os
