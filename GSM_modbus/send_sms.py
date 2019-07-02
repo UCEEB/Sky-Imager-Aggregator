@@ -34,5 +34,5 @@ def sentSMS(phone_num,SMS_text,port):
 	return data
 	        
 if __name__ == '__main__':
-    d=sentSMS('608643071','test SMS','ttyS0')
+    d=sentSMS('608643XXX','test SMS','ttyS0')
     print(d)
