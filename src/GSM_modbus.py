@@ -160,9 +160,13 @@ def _get_data_from_sensor(port,address,baudrate ,bytesize ,parity,stopbits ,logg
     
 
     #time.sleep(0.5)
-    irradinace = instrument.read_register(0,1, 4,False)
-    ext_temperature = instrument.read_register(8,1, 4,True)
-    cell_temperature =instrument.read_register(7,1, 4,True)
+    try:
+        irradinace = instrument.read_register(0,1, 4,False)
+        ext_temperature = instrument.read_register(8,1, 4,True)
+        cell_temperature =instrument.read_register(7,1, 4,True)
+    except Exception as e:
+        instrument.serial.close()
+        raise Exception(e)
     instrument.serial.close()
     return irradinace , ext_temperature, cell_temperature
 
