@@ -11,7 +11,7 @@ mask_path =
 
 camera_id = 79
 
-sha256_key = u5BDTbqU9nLM0Ik5mMoOZBf4byt24WcGBTDlGTqVc8zfXCFQ9evGfJ3iLx77G9sC
+sha256_key = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 log_path = /home/pi/Sky-Imager-Aggregator/log
 
