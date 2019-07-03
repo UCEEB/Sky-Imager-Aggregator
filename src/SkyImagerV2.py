@@ -38,7 +38,7 @@ def add_Image_job(sched,conf,logger,date=dt.datetime.now(dt.timezone.utc).date()
         sunrise, sunset = lfp.get_SunR_SunS(conf.camera_latitude,conf.camera_longitude,conf.camera_altitude,conf.debug_mode,date)
     sunrise-=dt.timedelta(minutes=conf.added_time);
     sunset+=dt.timedelta(minutes=conf.added_time);
-    sched.add_job(processImage, 'cron',[sched,conf,logger], second ='*/'+conf.cap_mod,start_date =sunrise,end_date =sunset,name=str(date))
+    sched.add_job(processImage, 'cron',[sched,conf,logger], second ='*/'+str(conf.cap_mod),start_date =sunrise,end_date =sunset,name=str(date))
     ls=sched.get_jobs()
     logger.info('add job '+get_job_parametr(ls[len(ls)-1]))
 
@@ -63,20 +63,25 @@ def processImage(sched,conf,logger):
         #image = frame[41:1967,331:2257]
         image = frame[conf.crop[1]:conf.crop[1]+conf.crop[3],conf.crop[0]:conf.crop[0]+conf.crop[2]] 
         # Masking image :
-        image = lfp.maskImg(image,conf.mask_path)        
+        if len(conf.mask_path)>0:
+            image = lfp.maskImg(image,conf.mask_path)        
         #encode image to jpeg image format
         is_success, buffer = cv2.imencode(".jpg", image,[int(cv2.IMWRITE_JPEG_QUALITY), conf.image_quality])
 
         success = True
-        try:
-            #attempt to send an image to the server
-            response=lfp.upload_json(buffer,image_time,conf.server) 
-        except Exception as e:
-            logger.error('upload to server error : '+str(e))
-            success=False
+        if len(conf.server)>0:
+            try:
+                #attempt to send an image to the server
+                response=lfp.upload_json(buffer,image_time,conf.server,conf) 
+                
+            except Exception as e:
+                logger.error('upload to server error : '+str(e))
+                success=False
+        else:
+            success = False
         if success==False or conf.debug_mode==True:
             #save image to storage
-            lfp.save_to_storage(buffer,conf.path_storage,image_time.strftime(conf.filetime_format),logger)
+            lfp.save_to_storage(buffer,conf,image_time.strftime(conf.filetime_format),logger,image_time)
 
         if success==True:
             logger.info('upload to server OK' ) 
