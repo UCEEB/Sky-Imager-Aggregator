@@ -18,7 +18,7 @@ import gzip
 if os.name != 'nt':
     import serial
     import RPi.GPIO as GPIO
-    import minimalmodbus1
+    import minimalmodbus
 
 
 ##check GSM modem state, if is ON or OFF
@@ -142,18 +142,68 @@ def _sendSMS(phone_num,SMS_text,port,logger):
 # @param[in] stopbits number of stop bits
 # @param[in] logger logger object
 # @return irradiance, temperature of external sensor, internal temperature
-def get_data_irradiance(port,address,baudrate ,bytesize ,parity,stopbits ,logger ):
+def _get_data_from_sensor(port,address,baudrate ,bytesize ,parity,stopbits ,logger ):
     #logger.debug(str(port)+" "+str(address)+" "+str(baudrate) +" "+str(bytesize) +" "+str(parity)+" "+str(stopbits))
-    #instrument = minimalmodbus.Instrument(port, address) # port name, slave address (in decimal)
-    instrument = minimalmodbus1.Instrument(address,port ,baudrate,bytesize,parity,stopbits,False,True) # port name, slave address (in decimal)
+    instrument = minimalmodbus.Instrument(port, address) # port name, slave address (in decimal)
+    #instrument = minimalmodbus1.Instrument(address,port ,baudrate,bytesize,parity,stopbits,False,True) # port name, slave address (in decimal)
+    #instrument.debug = True
+    if instrument.serial.isOpen()==False:
+                instrument.serial.open()
+
+    instrument.serial.baudrate = baudrate 
+    instrument.serial.bytesize = bytesize 
+    instrument.serial.parity = parity
+    instrument.serial.stopbits = stopbits
+    instrument.serial.rtscts= False
+    instrument.serial.dsrdtr=True
+    instrument.serial.timeout  = 0.1   # seconds
+    
 
     #time.sleep(0.5)
     irradinace = instrument.read_register(0,1, 4,False)
     ext_temperature = instrument.read_register(8,1, 4,True)
     cell_temperature =instrument.read_register(7,1, 4,True)
-
+    instrument.serial.close()
     return irradinace , ext_temperature, cell_temperature
 
+##Get irradiance and temperature from Light sensor
+# @param[in] port port is dev/ttyS0 or dev/ttyUSB0 
+# @param[in] address modbus address
+# @param[in] baudrate port baudrate
+# @param[in] bytesize number of data bits
+# @param[in] parity enable parity checking
+# @param[in] stopbits number of stop bits
+# @param[in] logger logger object
+# @return irradiance, temperature of external sensor, internal temperature
+def get_data_irradiance(port,address,baudrate ,bytesize ,parity,stopbits ,logger ):
+
+    count=0
+    while True:
+        try:
+            logger.debug('try read irradiance')
+            irradinace ,ext_temperature,cell_temperature =_get_data_from_sensor(port,address,baudrate ,bytesize ,parity,stopbits ,logger )
+        except Exception as e:
+            logger.debug('irradiance error'+ str(e))
+            if count>5:
+                raise Exception(e)
+            elif count==3:
+                logger.debug('restart USBSerial ')
+                _restart_USB2serial()
+        else:
+            logger.debug('irradiance ok')
+            return irradinace , ext_temperature, cell_temperature
+        count=count+1
+        time.sleep(0.1)
+
+##Restart RS485 USB dongle
+def _restart_USB2serial():
+    time.sleep(0.5)
+    os.system('sudo modprobe -r pl2303')
+    time.sleep(0.2)
+    os.system('sudo modprobe -r usbserial')
+    time.sleep(0.2)
+    os.system('sudo modprobe pl2303')
+    time.sleep(0.5)
 
 
 ##Function wait until start ppp connection
