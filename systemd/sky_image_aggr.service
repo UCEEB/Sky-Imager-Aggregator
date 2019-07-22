@@ -2,7 +2,7 @@
 Description=Fetches images from camera, preprocesses and uploads them to storage server
 
 [Service]
-ExecStart=/bin/sh -c 'cd /home/pi/Sky-Imager-Aggregator/src && python3 SkyImagerV2.py'
+ExecStart=/bin/sh -c 'cd /home/pi/Sky-Imager-Aggregator_free/src && python3 SkyImager.py'
 User=pi
 Group=pi
 Restart=always

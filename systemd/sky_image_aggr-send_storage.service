@@ -3,6 +3,6 @@ Description=Uploads images to storage server
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'cd /home/pi/Sky-Imager-Aggregator/src && python3 SendStorageV2.py'
+ExecStart=/bin/sh -c 'cd /home/pi/Sky-Imager-Aggregator_free/src && python3 StorageController.py'
 User=pi
 Group=pi

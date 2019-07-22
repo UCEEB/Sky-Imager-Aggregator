@@ -1,0 +1,81 @@
+2019-07-10 17:00:15,328 INFO Storage is empty
+2019-07-10 17:46:07,134 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 17:46:10,150 INFO Downloading image from camera
+2019-07-10 17:46:10,407 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-46-10.jpg saved to storage
+2019-07-10 17:46:20,151 INFO Downloading image from camera
+2019-07-10 17:46:20,415 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-46-20.jpg saved to storage
+2019-07-10 17:46:57,807 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 17:47:00,144 INFO Downloading image from camera
+2019-07-10 17:47:00,395 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-47-00.jpg saved to storage
+2019-07-10 17:47:10,143 INFO Downloading image from camera
+2019-07-10 17:47:10,412 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-47-10.jpg saved to storage
+2019-07-10 17:47:20,149 INFO Downloading image from camera
+2019-07-10 17:47:20,396 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-47-20.jpg saved to storage
+2019-07-10 17:47:30,152 INFO Downloading image from camera
+2019-07-10 17:47:30,414 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-47-30.jpg saved to storage
+2019-07-10 17:47:40,160 INFO Downloading image from camera
+2019-07-10 17:47:40,440 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-47-40.jpg saved to storage
+2019-07-10 17:47:50,156 INFO Downloading image from camera
+2019-07-10 17:47:50,405 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-47-50.jpg saved to storage
+2019-07-10 17:50:11,900 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 17:50:20,146 INFO Downloading image from camera
+2019-07-10 17:50:20,394 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-50-20.jpg saved to storage
+2019-07-10 17:50:30,152 INFO Downloading image from camera
+2019-07-10 17:50:30,430 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-50-30.jpg saved to storage
+2019-07-10 17:53:23,124 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 17:53:30,291 INFO Downloading image from camera
+2019-07-10 17:53:30,625 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-53-30.jpg saved to storage
+2019-07-10 17:53:40,155 INFO Downloading image from camera
+2019-07-10 17:53:40,489 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-53-40.jpg saved to storage
+2019-07-10 17:54:59,665 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 17:55:00,129 INFO Downloading image from camera
+2019-07-10 17:55:02,403 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-55-00.jpg saved to storage
+2019-07-10 17:56:55,450 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 17:57:00,136 INFO Downloading image from camera
+2019-07-10 17:57:01,640 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_15-57-00.jpg saved to storage
+2019-07-10 18:00:15,076 INFO Storage is not empty
+2019-07-10 19:00:14,815 INFO Storage is not empty
+2019-07-10 19:23:03,775 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 19:23:10,002 INFO Capturing image
+2019-07-10 19:23:10,127 INFO Downloading image from camera
+2019-07-10 19:23:14,378 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 19:23:20,004 INFO Capturing image
+2019-07-10 19:23:20,132 INFO Downloading image from camera
+2019-07-10 19:23:24,432 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 19:23:30,004 INFO Capturing image
+2019-07-10 19:23:30,144 INFO Downloading image from camera
+2019-07-10 19:23:34,521 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 19:23:40,002 INFO Capturing image
+2019-07-10 19:23:40,139 INFO Downloading image from camera
+2019-07-10 19:23:44,851 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 19:23:50,004 INFO Capturing image
+2019-07-10 19:23:50,134 INFO Downloading image from camera
+2019-07-10 20:00:13,815 INFO Storage is not empty
+2019-07-10 20:32:04,486 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 20:32:10,004 INFO Capturing image
+2019-07-10 20:32:10,403 INFO Downloading image from camera
+2019-07-10 20:32:10,721 INFO Applying mask
+2019-07-10 20:32:11,592 INFO Applying custom processing
+2019-07-10 20:33:45,199 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 20:33:50,004 INFO Capturing image
+2019-07-10 20:33:50,137 INFO Downloading image from camera
+2019-07-10 20:33:50,468 INFO Applying mask
+2019-07-10 20:33:51,338 INFO Applying custom processing
+2019-07-10 20:33:51,670 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_18-33-50.jpg saved to storage
+2019-07-10 20:34:00,011 INFO Capturing image
+2019-07-10 20:34:00,126 INFO Downloading image from camera
+2019-07-10 20:34:00,406 INFO Applying mask
+2019-07-10 20:34:01,318 INFO Applying custom processing
+2019-07-10 20:34:01,643 INFO image /home/pi/Sky-Imager-Aggregator_free/STORAGE/19-07-10/19-07-10_18-34-00.jpg saved to storage
+2019-07-10 20:49:25,694 INFO add job name 2019-07-10 start time 2019-07-10 03:01:58+00:00 end time 2019-07-10 19:15:13+00:00 cron[second='*/10']
+2019-07-10 20:49:30,003 INFO Capturing image
+2019-07-10 20:49:30,127 INFO Downloading image from camera
+2019-07-10 20:49:30,580 INFO Applying mask
+2019-07-10 20:49:31,472 INFO Applying custom processing
+2019-07-10 20:49:31,915 INFO image /media/usb1/19-07-10/19-07-10_18-49-30.jpg saved to storage
+2019-07-10 20:49:40,010 INFO Capturing image
+2019-07-10 20:49:40,145 INFO Downloading image from camera
+2019-07-10 20:49:40,412 INFO Applying mask
+2019-07-10 20:49:41,279 INFO Applying custom processing
+2019-07-10 20:49:41,735 INFO image /media/usb1/19-07-10/19-07-10_18-49-40.jpg saved to storage
+2019-07-10 21:00:13,687 INFO Storage is not empty
