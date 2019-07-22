@@ -5,5 +5,4 @@ src/.vs/
 src/.mypy_cache/
 src/__pycache__/
 src/src.pyproj
-src/CustomProcessing.py
 STORAGE/
