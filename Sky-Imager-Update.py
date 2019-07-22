@@ -13,7 +13,7 @@ def update(update_mode):
         origin = repo.remote()
 
         cli = origin.repo.git
-        cli.checkout('origin/master', '.')
+        cli.checkout('origin/kamil', '.')
         print('Update successful')
     elif update_mode == 'main':
         repo = Repo('./')
