@@ -1,3 +1,0 @@
-Èasování západu a východu slunce
-Souèasný stav - na konci dne se udìlá nový job na další den. Pokud by nefungovala (exception) tak se bere 4h-22h.
-Dalo by se udìlat pomocný skript (ke spuštìní 1x pøi instalaci), který by vygeneroval (za pomoci stávající knihovny) konfiguraèní data pro èasování denní doby.
