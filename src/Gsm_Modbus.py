@@ -321,7 +321,7 @@ def _upload_logfile(logger, conf, log):
 
 
 ## queue of requests to GSM modem
-qu = queue.Queue()
+gsm_queue = queue.Queue()
 
 
 ##Class store request to send SMS
@@ -404,5 +404,16 @@ class TailLogHandler(logging.Handler):
     def send_to_server(self):
         if self.count > 0:
             self.count = 0
-            qu.put(C_send_log(self.logger, self.conf, gzip.compress(str.encode(self.store))))
+            gsm_queue.put(C_send_log(self.logger, self.conf, gzip.compress(str.encode(self.store))))
             self.store = ""
+
+
+def GSM_worker(logger):
+    while True:
+        try:
+            item = gsm_queue.get()
+            logger.debug('Execute command from queue')
+            item.exec()
+            gsm_queue.task_done()
+        except Exception as e:
+            logger.error('GSM worker error: '+ str(e))
