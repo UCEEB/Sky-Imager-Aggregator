@@ -28,7 +28,6 @@ def apply_mask(image, path_to_mask):
 
 
 def apply_custom_processing(image, config):
-    
     if len(config.private_lib_name) > 0:
         script_name = config.private_lib_name
         script_name_without_ext = os.path.splitext(script_name)[0]
@@ -37,6 +36,7 @@ def apply_custom_processing(image, config):
         return result
 
     return image
+
 
 def hmac_sha256(message, key):
     return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
@@ -66,11 +66,11 @@ def upload_json(image, file_time, config):
         'data': sky_image
     }
     json_data = json.dumps(data)
-    signature = hmac_sha256(json_data,key)
+    signature = hmac_sha256(json_data, key)
 
-    url = server+signature
+    url = server + signature
 
-    response = send_post_request(url,json_data)
+    response = send_post_request(url, json_data)
     try:
         json_response = json.loads(response.text)
     except Exception as e:
@@ -80,6 +80,36 @@ def upload_json(image, file_time, config):
         raise Exception(json_response['message'])
     return json_response
 
+
+def upload_bson(image, file_time, server, config):
+    date_string = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+
+    id = config.id
+    key = config.key
+
+    data = {
+        "status": "ok",
+        "id": id,
+        "time": date_string,
+        "coding": "none"
+    }
+    jsondata = json.dumps(data)
+    signature = hmac_sha256(jsondata, key)
+
+    if isinstance(image, str) or isinstance(image, bytes):
+        files = [('image', image), ('json', jsondata)]
+    else:
+        files = [('image', str(image)), ('json', jsondata)]
+
+    response = requests.post(server + signature, files = files)
+    try:
+        json_response = json.loads(response.text)
+    except Exception as e:
+        raise Exception(response)
+
+    if json_response['status'] != 'ok':
+        raise Exception(json_response['message'])
+    return json_response
 
 
 def get_sunrise_and_sunset_date(camera_latitude, camera_longitude, camera_altitude,
@@ -97,8 +127,6 @@ def get_sunrise_and_sunset_date(camera_latitude, camera_longitude, camera_altitu
     return sun['sunrise'], sun['sunset']
 
 
-# todo check this function
-## Detect if path to USB storage is valid
 def get_path_to_storage(config):
     path = config.path_storage
     if config.autonomous_mode:

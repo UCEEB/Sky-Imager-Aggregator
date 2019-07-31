@@ -15,11 +15,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import LibraryForPi
 from ConfigurationClass import ConfigurationObject
+import Gsm_Modbus
 
 
 def process_image(scheduler, config, logger):
+    if config.light_sensor:
+        get_irradiance_data(config, logger)
+
     logger.info('Capturing image')
-    # initialize camera
     cap = cv2.VideoCapture(config.cap_url)
 
     if not cap.isOpened():
@@ -31,7 +34,7 @@ def process_image(scheduler, config, logger):
     logger.info('Downloading image from camera')
     ret, frame = cap.read()
 
-    # Resizing in case of wrong dimensons
+    # Resizing in case of wrong dimensions
     image = frame[config.crop[1]:config.crop[1] + config.crop[3], config.crop[0]:config.crop[0] + config.crop[2]]
 
     # Masking image
@@ -58,6 +61,7 @@ def process_image(scheduler, config, logger):
     if not success or config.debug_mode:
         filename = image_time.strftime(config.filetime_format)
         LibraryForPi.save_to_storage(buffer, config, filename, logger, image_time)
+        #Sending thumbnail over GSM
 
     if success:
         logger.info('Upload to server OK')
@@ -104,6 +108,24 @@ def control_job(scheduler, config, logger):
     if len(ls) == 0:
         add_image_job(scheduler, config, logger)
         logger.error('Some problem, added extra job for: ' + str(dt.date.today()))
+
+
+def get_irradiance_data(config, logger):
+    image_time = dt.datetime.utcnow()
+    try:
+        irradiance, ext_temperature, cell_temperature = Gsm_Modbus.get_data_irradiance(config.MODBUS_port,
+                                                                                       config.MODBUS_sensor_address,
+                                                                                       config.MODBUS_baudrate,
+                                                                                       config.MODBUS_bytesize,
+                                                                                       config.MODBUS_parity,
+                                                                                       config.MODBUS_stopbits,
+                                                                                       logger
+                                                                                       )
+        logger.debug('irradiance ' + str(irradiance))
+        time_csv = image_time.strftime("%y-%m-%d_%H-%M-%S")
+        LibraryForPi.save_irradiance_csv(config, time_csv, irradiance, ext_temperature, cell_temperature, logger)
+    except Exception as e:
+        logger.error('Unable to get data from light sensor: ' + str(e))
 
 
 def start():
