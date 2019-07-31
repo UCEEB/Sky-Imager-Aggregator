@@ -4,7 +4,7 @@
 # @version   3.0
 # @author   Jan Havrlant and Barbara Stefanovska
 #
-
+import threading
 
 import cv2
 import logging
@@ -19,6 +19,18 @@ import Gsm_Modbus
 
 
 def process_image(scheduler, config, logger):
+    if config.autonomous_mode and config.counter == -1:
+        if config.GSM_time_sync:
+            Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
+
+    if config.GSM_phone_no != '':
+        SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
+            config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
+        logger.info('Send SMS: ' + SMS_text)
+        Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
+
+    config.counter = 0
+
     if config.light_sensor:
         get_irradiance_data(config, logger)
 
@@ -61,7 +73,7 @@ def process_image(scheduler, config, logger):
     if not success or config.debug_mode:
         filename = image_time.strftime(config.filetime_format)
         LibraryForPi.save_to_storage(buffer, config, filename, logger, image_time)
-        #Sending thumbnail over GSM
+        # Sending thumbnail over GSM
 
     if success:
         logger.info('Upload to server OK')
@@ -141,6 +153,18 @@ def start():
                                                            config.log_to_console,
                                                            logger,
                                                            console_logger)
+
+    if config.autonomous_mode:
+        if config.GSM_time_sync:
+            Gsm_Modbus.sync_time(config.GSM_port, logger, config.GSM_ppp_config_file)
+        if config.GSM_send_log:
+            log_handler = Gsm_Modbus.TailLogHandler(100, logger, config)
+            log_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+            log_handler.setLevel(logging.INFO)
+            logger.addHandler(log_handler)
+            config.log_internet = log_handler
+        config.thread = threading.Thread(target=Gsm_Modbus.GSM_worker, args=(logger, config))
+        config.thread.start()
 
     # create jobs
     main_scheduler = BlockingScheduler()
