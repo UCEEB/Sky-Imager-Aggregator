@@ -22,9 +22,10 @@ import Gsm_Modbus
 def process_image(scheduler, config, logger):
     if config.autonomous_mode and config.counter == -1:
         if config.GSM_time_sync:
+            logger.info('Synchronizing time')
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
 
-    if config.GSM_phone_no != '':
+    if config.GSM_phone_no != '' and config.counter != -1:
         SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
             config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
         logger.info('Send SMS: ' + SMS_text)
@@ -164,7 +165,7 @@ def start():
             log_handler.setLevel(logging.INFO)
             logger.addHandler(log_handler)
             config.log_internet = log_handler
-        config.thread = threading.Thread(target=Gsm_Modbus.GSM_worker, args=logger)
+        config.thread = threading.Thread(target=Gsm_Modbus.GSM_worker, args=[logger])
         config.thread.start()
 
     # create jobs
