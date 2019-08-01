@@ -2,6 +2,9 @@ import subprocess
 import os
 
 if os.name == 'posix':
+    if not os.path.exists('STORAGE'):
+        os.mkdir('STORAGE')
+
     try:
         cp_service = 'sudo cp systemd/sky_image_aggr-send_storage.service /lib/systemd/system/'
         cp_timer = 'sudo cp systemd/sky_image_aggr-send_storage.timer /lib/systemd/system/'
