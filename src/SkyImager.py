@@ -163,7 +163,7 @@ def start():
             log_handler.setLevel(logging.INFO)
             logger.addHandler(log_handler)
             config.log_internet = log_handler
-        config.thread = threading.Thread(target=Gsm_Modbus.GSM_worker, args=(logger, config))
+        config.thread = threading.Thread(target=Gsm_Modbus.GSM_worker, args=logger)
         config.thread.start()
 
     # create jobs
@@ -179,5 +179,5 @@ def start():
 
 
 if __name__ == '__main__':
-    print('Starting Camera Controller')
+    print('Starting SkyImager')
     start()
