@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 ## LibraryForPi
 # @package   SendStorageV2
 # @details   Script sends the images that for some reason were not sent on time.
