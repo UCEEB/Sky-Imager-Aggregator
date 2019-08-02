@@ -24,10 +24,9 @@ def process_image(scheduler, config, logger):
         if config.GSM_time_sync:
             logger.info('Synchronizing time')
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
-
-    if config.GSM_phone_no != '' and config.counter != -1:
+    if config.GSM_phone_no != '':
         SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
-            config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
+        config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
         logger.info('Send SMS: ' + SMS_text)
         Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
 
@@ -101,6 +100,12 @@ def add_image_job(scheduler, config, logger, date=dt.datetime.now(dt.timezone.ut
                                                                    date)
         sunrise -= dt.timedelta(minutes=config.added_time)
         sunset += dt.timedelta(minutes=config.added_time)
+        config.counter = -1
+        if config.GSM_phone_no != '':
+            SMS_text = 'SkyImg end, df ' + LibraryForPi.get_freespace_storage(
+                config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
+            logger.info('Send SMS: ' + SMS_text)
+            Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
 
     scheduler.add_job(process_image, 'cron', [scheduler, config, logger], second='*/' + str(config.cap_mod),
                       start_date=sunrise, end_date=sunset, name=str(date))

@@ -80,6 +80,7 @@ def _upload_thumbnail(logger, config, image, image_time):
         try:
             response = lfp.upload_bson(image, image_time, config.GSM_thumbnail_upload_server, config)
             logger.info('Upload thumbnail to server OK')
+            _disable_ppp()
             return
         except Exception as e:
             logger.error('Upload thumbnail to server error: ' + str(e))
@@ -89,6 +90,7 @@ def _upload_thumbnail(logger, config, image, image_time):
             break
 
     logger.debug('Upload thumbnail to server end')
+    _disable_ppp(logger)
 
 
 def _get_GSM_state(port, logger):
