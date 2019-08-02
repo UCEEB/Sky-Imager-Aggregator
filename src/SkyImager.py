@@ -24,11 +24,11 @@ def process_image(scheduler, config, logger):
         if config.GSM_time_sync:
             logger.info('Synchronizing time')
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
-    if config.GSM_phone_no != '':
-        SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
-        config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
-        logger.info('Send SMS: ' + SMS_text)
-        Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
+        if config.GSM_phone_no != '':
+            SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
+            config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
+            logger.info('Send SMS: ' + SMS_text)
+            Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
 
     config.counter = 0
 
