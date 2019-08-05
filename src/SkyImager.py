@@ -26,7 +26,7 @@ def process_image(scheduler, config, logger):
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
         if config.GSM_phone_no != '':
             SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
-            config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
+                config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
             logger.info('Send SMS: ' + SMS_text)
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
 
@@ -75,6 +75,13 @@ def process_image(scheduler, config, logger):
         filename = image_time.strftime(config.filetime_format)
         LibraryForPi.save_to_storage(buffer, config, filename, logger, image_time)
         # Sending thumbnail over GSM
+        if config.GSM_send_thumbnail and int(
+                image_time.timestamp()) % config.GSM_thumbnail_upload_time_interval < config.cap_mod:
+            logger.info("Free space: " + LibraryForPi.get_freespace_storage(config))
+            res = cv2.resize(image, dsize=(config.GSM_thumbnail_size, config.GSM_thumbnail_size),
+                             interpolation=cv2.INTER_NEAREST)
+            is_success, buffer = cv2.imencode(".jpg", res, [int(cv2.IMWRITE_JPEG_QUALITY), config.image_quality])
+            Gsm_Modbus.qu.put(Gsm_Modbus.C_send_thumbnail(logger, config, buffer, image_time))
 
     if success:
         logger.info('Upload to server OK')
