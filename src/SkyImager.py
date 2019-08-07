@@ -193,5 +193,7 @@ def start():
 
 
 if __name__ == '__main__':
+    if not os.path.exists('STORAGE'):
+        os.mkdir('STORAGE')
     print('Starting SkyImager')
     start()
