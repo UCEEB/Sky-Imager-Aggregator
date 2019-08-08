@@ -81,7 +81,7 @@ def process_image(scheduler, config, logger):
             res = cv2.resize(image, dsize=(config.GSM_thumbnail_size, config.GSM_thumbnail_size),
                              interpolation=cv2.INTER_NEAREST)
             is_success, buffer = cv2.imencode(".jpg", res, [int(cv2.IMWRITE_JPEG_QUALITY), config.image_quality])
-            Gsm_Modbus.qu.put(Gsm_Modbus.C_send_thumbnail(logger, config, buffer, image_time))
+            Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_thumbnail(logger, config, buffer, image_time))
 
     if success:
         logger.info('Upload to server OK')
