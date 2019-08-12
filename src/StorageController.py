@@ -50,7 +50,8 @@ def run_storage_controller():
                 logger.info('{} was successfully uploaded to server'.format(file))
 
                 try:
-                    os.remove(config.path_storage + '/' + file)
+                    os.remove(os.path.join(config.path_storage, file))
+
                 except Exception as e:
                     logger.error('{} could not be deleted due to the following error:\n{}'.format(file, e))
 
