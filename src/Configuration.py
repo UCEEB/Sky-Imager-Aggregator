@@ -1,25 +1,30 @@
-## LibraryForPi
-# @package   SendStorageV2
-# @details   Script sends the images that for some reason were not sent on time.
-# @version   3.0
-# @author   Jan Havrlant and Barbara Stefanovska
-#
+"""
+LibraryForPi
+Script sends the images that for some reason were not sent on time.
+"""
 
 import configparser
 
+__author__ = 'Jan Havrlant'
+__copyright__ = 'MIT'
+__credits__ = ['Jan Havrlant', 'Barbara Stefanovska']
+__license__ = 'Copyright 2018, UCEEB (Czech Technical University in Prague)'
+__version__ = '3.0'
+__maintainer__ = ''
+__email__ = ''
+__status__ = 'Development'
+__package__ = 'SendStorageV2'
 
-class ConfigurationObject:
+
+class Configuration:
     def __init__(self, path_config, logger):
-
         config = configparser.ConfigParser()
+        config.read(path_config)
+        self.counter = -1
 
         try:
-            self.counter = -1
-            config.read(path_config)
-
             self.cap_url = config.get('SETTING', 'cap_url')
             self.path_storage = config.get('SETTING', 'path_storage')
-
             self.server = config.get('SETTING', 'upload_server')
             self.log_path = config.get('SETTING', 'log_path')
             self.log_to_console = config.getboolean('SETTING', 'log_to_console')
@@ -30,18 +35,19 @@ class ConfigurationObject:
             self.debug_mode = config.getboolean('SETTING', 'debug_mode')
             self.filetime_format = config.get('SETTING', 'filetime_format')
             self.image_quality = config.getint('SETTING', 'image_quality')
-            self.crop = [int(x) for x in
-                         config.get('SETTING', 'crop').split(",")]  # map(int, config.get('SETTING','crop').split(","))
+            self.crop = [
+                int(i.strip()) for i in config.get('SETTING', 'crop').split(',')
+            ]
             self.mask_path = config.get('SETTING', 'mask_path')
             self.cap_mod = config.getint('SETTING', 'cap_mod')
             self.added_time = config.getint('SETTING', 'added_time')
-            self.use_private_lib = config.getboolean('SETTING','use_private_lib')
-            self.private_lib_name = config.get('SETTING','private_lib_name')
+            self.use_private_lib = config.getboolean('SETTING', 'use_private_lib')
+            self.private_lib_name = config.get('SETTING', 'private_lib_name')
             self.id = config.get('SETTING', 'camera_id')
-            self.key = bytes(config.get('SETTING', 'sha256_key'), "ascii")
-
+            self.key = bytes(config.get('SETTING', 'sha256_key'), 'ascii')
             self.autonomous_mode = config.getboolean('SETTING', 'autonomous_mode')
             self.light_sensor = config.getboolean('SETTING', 'light_sensor')
+
             if self.autonomous_mode:
                 self.GSM_path_storage_usb1 = config.get('GSM', 'path_storage_usb1')
                 self.GSM_path_storage_usb2 = config.get('GSM', 'path_storage_usb2')
@@ -67,5 +73,4 @@ class ConfigurationObject:
                 self.MODBUS_csv_name = config.get('MODBUS', 'csv_name')
 
         except Exception as e:
-            logger.critical('Configuration file error : ' + str(e))
-            return
+            logger.critical('Configuration file error: {}'.format(str(e)))
