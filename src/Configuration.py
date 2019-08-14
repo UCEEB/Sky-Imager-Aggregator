@@ -1,9 +1,6 @@
-"""
-LibraryForPi
-Script sends the images that for some reason were not sent on time.
-"""
-
 import configparser
+import os
+
 
 __author__ = 'Jan Havrlant'
 __copyright__ = 'MIT'
@@ -15,11 +12,16 @@ __email__ = ''
 __status__ = 'Development'
 __package__ = 'SendStorageV2'
 
+parent_dir = os.path.dirname(os.path.dirname(__file__))
+
 
 class Configuration:
-    def __init__(self, path_config, logger):
+    def __init__(self, config_path=None):
         config = configparser.ConfigParser()
-        config.read(path_config)
+        if not config_path:
+            config.read(os.path.join(parent_dir, 'config.ini'))
+        else:
+            config.read(config_path)
         self.counter = -1
 
         try:
@@ -73,4 +75,7 @@ class Configuration:
                 self.MODBUS_csv_name = config.get('MODBUS', 'csv_name')
 
         except Exception as e:
-            logger.critical('Configuration file error: {}'.format(str(e)))
+            ###########################
+            # logger should be added ##
+            ###########################
+            raise Exception('Configuration file error: {}'.format(e))
