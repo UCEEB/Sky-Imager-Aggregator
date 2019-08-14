@@ -35,10 +35,10 @@ class SIAUtil(Logger):
 
     @staticmethod
     def load_image(image):
-        return
+        return cv2.imread(image)
 
     def apply_mask(self, image):
-        return np.multiply(cv2.imread(self.config.mask_path) / 255, image)
+        return np.multiply(self.load_image(self.config.mask_path) / 255, image)
 
     @staticmethod
     def apply_custom_processing(image):
