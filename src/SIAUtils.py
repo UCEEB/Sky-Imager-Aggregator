@@ -28,17 +28,20 @@ __package__ = ''
 __doc__ = 'This file contains SIAUtil class which consists of different helper methods for running the raspberry pi'
 
 
-class SIAUtil(Logger):
-    def __init__(self):
+class SIAUtils(Logger):
+    def __init__(self, config_path=None):
         super().__init__()
-        self.config = Configuration()
+        if not config_path:
+            self.config = Configuration()
+        else:
+            self.config = Configuration(config_path=config_path)
 
     @staticmethod
     def load_image(image):
         return cv2.imread(image)
 
     def apply_mask(self, image):
-        return np.multiply(self.load_image(self.config.mask_path) / 255, image)
+        return np.multiply(self.load_image(self.config.mask_path) , image)
 
     @staticmethod
     def apply_custom_processing(image):
