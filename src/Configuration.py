@@ -1,6 +1,6 @@
 import configparser
 import os
-
+import sys
 
 __author__ = 'Jan Havrlant'
 __copyright__ = 'MIT'
@@ -13,6 +13,7 @@ __status__ = 'Development'
 __package__ = 'SendStorageV2'
 
 parent_dir = os.path.dirname(os.path.dirname(__file__))
+sys.path.append(parent_dir)
 
 
 class Configuration:
