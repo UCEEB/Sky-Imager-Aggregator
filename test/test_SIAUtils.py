@@ -2,7 +2,7 @@ import unittest
 from unittest import TestCase
 from os import listdir, path
 
-from SIAUtils import SIAUtils
+from src.SIAUtils import SIAUtils
 
 
 test_dir = path.basename(__file__)
