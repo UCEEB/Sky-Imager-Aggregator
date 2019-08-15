@@ -1,17 +1,14 @@
 import unittest
 from unittest import TestCase
 from os import listdir, path
+import sys
 try:
-    import sys
-    sys.path.append('..')
+    sys.path.append(path.basename(path.basename(__file__)))
     print(sys.path)
 except Exception as e:
     raise e
 
 from src.SIAUtils import SIAUtils
-
-
-test_dir = path.basename(__file__)
 
 
 class TestSIAUtils(TestCase):
