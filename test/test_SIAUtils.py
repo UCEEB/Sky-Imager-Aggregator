@@ -1,6 +1,11 @@
 import unittest
 from unittest import TestCase
 from os import listdir, path
+try:
+    import sys
+    sys.path.append('..')
+except Exception as e:
+    raise e
 
 from src.SIAUtils import SIAUtils
 
