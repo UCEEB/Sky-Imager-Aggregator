@@ -1,12 +1,13 @@
 import unittest
 from unittest import TestCase
 from os import listdir, path
+import sys
 
 from SIAUtils import SIAUtils
 
 
 test_dir = path.basename(__file__)
-
+sys.path.append('..')
 
 class TestSIAUtils(TestCase):
     def setUp(self):
