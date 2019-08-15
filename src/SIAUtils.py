@@ -13,8 +13,8 @@ import cv2
 import numpy as np
 from astral import Astral, Location
 
-from Configuration import Configuration
-from SIALogger import Logger
+from src.Configuration import Configuration
+from src.SIALogger import Logger
 
 __author__ = 'Jan Havrlant'
 __copyright__ = 'MIT'
