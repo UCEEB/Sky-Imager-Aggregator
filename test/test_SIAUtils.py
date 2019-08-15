@@ -4,6 +4,7 @@ from os import listdir, path
 try:
     import sys
     sys.path.append('..')
+    print(sys.path)
 except Exception as e:
     raise e
 
