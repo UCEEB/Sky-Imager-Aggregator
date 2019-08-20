@@ -1,10 +1,13 @@
+#!/usr/bin/python3
 import unittest
 from unittest import TestCase
 from os import listdir, path
+from os.path import abspath, dirname
 import sys
+
 try:
-    sys.path.append(path.basename(path.basename(__file__)))
-    print(sys.path)
+    parent_dir = dirname(dirname(abspath(__file__)))
+    sys.path.append(parent_dir)
 except Exception as e:
     raise e
 
@@ -16,7 +19,7 @@ class TestSIAUtils(TestCase):
         self.utils = SIAUtils()
 
     def test_apply_mask(self):
-        for file in listdir('.\\dummy-data'):
+        for file in listdir('.\\dummy'):
             if path.splitext(file)[-1] == '.jpg':
                 print(file)
                 self.utils.apply_mask(file)
