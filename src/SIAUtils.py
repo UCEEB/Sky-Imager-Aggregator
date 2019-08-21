@@ -11,10 +11,7 @@ import datetime as dt
 
 import cv2
 import numpy as np
-from astral import Astral, Location
-
 from Configuration import Configuration
-from SIALogger import Logger
 
 __author__ = 'Jan Havrlant'
 __copyright__ = 'MIT'
@@ -87,23 +84,6 @@ class SIAUtil:
 
         return json_response
 
-    @staticmethod
-    def get_sunrise_and_sunset_date(cam_latitude, cam_longitude, cam_altitude, date=None):
-        if not date:
-            date = dt.datetime.now(dt.timezone.utc).date()
-
-        astral = Astral()
-        astral.solar_depression = 'civil'
-        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
-
-        try:
-            sun = location.sun(date=date)
-        except Exception:
-            return dt.datetime.combine(date, dt.time(3, 0, 0, 0, dt.timezone.utc)), \
-                   dt.datetime.combine(date, dt.time(21, 0, 0, 0, dt.timezone.utc))
-
-        return sun['sunrise'], sun['sunset']
-
     def get_path_to_storage(self):
         path = self.config.path_storage
         if self.config.autonomous_mode:
@@ -170,5 +150,5 @@ class SIAUtil:
             socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
             return True
         except Exception as e:
-            self.logger.error('no internet connection : ' + str(e))
+            self.logger.error('No internet connection: ' + str(e))
             return False

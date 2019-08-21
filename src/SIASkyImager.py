@@ -2,6 +2,7 @@ import cv2
 import datetime as dt
 from SIAUtils import SIAUtil
 from Configuration import Configuration
+from SIAIrradiance import SIAIrradiance
 
 
 class SkyImager:
@@ -14,7 +15,7 @@ class SkyImager:
             self.config = config
         self.utils = SIAUtil(logger)
 
-    def process_image(self):
+    def process_image(self, offline_mode=True):
         cap = cv2.VideoCapture(self.config.cap_url)
 
         if not cap.isOpened():
@@ -42,21 +43,32 @@ class SkyImager:
         is_success, buffer = cv2.imencode('.jpg', image,
                                           [int(cv2.IMWRITE_JPEG_QUALITY), self.config.image_quality])
 
-        success = True
-        if len(self.config.server) > 0:
+        if offline_mode or self.config.debug_mode:
+            filename = img_time.strftime(self.config.filetime_format)
+            self.utils.save_to_storage(buffer, filename, img_time)
+
+        else:
             try:
                 response = self.utils.upload_json(buffer, img_time)
             except Exception as e:
                 self.logger.error('Upload to server error: ' + str(e))
-                success = False
-        else:
-            success = False
-
-        if not success or self.config.debug_mode:
-            filename = img_time.strftime(self.config.filetime_format)
-            self.utils.save_to_storage(buffer, filename, img_time)
         return
 
     def get_irradiance_data(self):
         measurement_time = dt.datetime.utcnow()
-        pass
+        irr_sensor = SIAIrradiance(self.logger)
+
+        params = dict(port=self.config.MODBUS_port,
+                      address=self.config.MODBUS_sensor_address,
+                      baudrate=self.config.MODBUS_baudrate,
+                      bytesize=self.config.MODBUS_bytesize,
+                      parity=self.config.MODBUS_parity,
+                      stopbits=self.config.MODBUS_stopbits)
+
+        try:
+            irradiance, ext_temperature, cell_temperature = irr_sensor.get_irradiance_data(**params)
+            self.logger.debug('Irradiance: ' + str(irradiance))
+            csv_time = measurement_time.strftime("%y-%m-%d_%H-%M-%S")
+            self.utils.save_irradiance_csv(csv_time, irradiance, ext_temperature, cell_temperature)
+        except Exception as e:
+            self.logger.error('Unable to get data from light sensor: ' + str(e))

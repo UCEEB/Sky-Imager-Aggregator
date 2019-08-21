@@ -6,8 +6,6 @@ from os.path import join
 class Logger:
     def __init__(self):
         self.logger, self.console_logger = self.set_logger()
-        print(id(self))
-        print(self.__class__.__name__)
 
     @staticmethod
     def set_logger(log_level=logging.DEBUG):
@@ -15,7 +13,7 @@ class Logger:
         console_logger = logging.StreamHandler()
         logger.addHandler(console_logger)  # logging to console
         logger.setLevel(log_level)
-        logger.info("Running program...")
+        logger.info("Setting logger...")
 
         return logger, console_logger
 
@@ -41,5 +39,4 @@ class Logger:
             self.logger.addHandler(handler)
         except Exception as e:
             self.logger.error('log file error : {}'.format(e))
-
         return handler
