@@ -179,7 +179,7 @@ class SIAGsm:
         self._disable_ppp()
         time.sleep(1)
         self.logger.debug('sudo pppd call')
-        os.system('sudo pppd call' + self.config.GSM_ppp_config_file)
+        os.system('sudo pppd call ' + self.config.GSM_ppp_config_file)
 
         self.logger.debug('start ppp')
         if not self._wait_for_start(100):
@@ -213,6 +213,7 @@ class SIAGsm:
                     if message.find('UP') != -1:
                         self.logger.debug('ppp UP')
                         return True
+                    
                 except Exception as e:
                     self.logger.info('error' + str(e))
                     return False
@@ -235,7 +236,7 @@ class SIAGsm:
 
     def _GSM_switch_on(self, port):
         self.logger.debug('GSM switch ON')
-        if SIAGsm._get_GSM_state(port):
+        if self._get_GSM_state(port):
             return True
 
         counter = 0
@@ -243,7 +244,7 @@ class SIAGsm:
             self._GSM_switch()
             time.sleep(6)
             counter += 1
-            if SIAGsm._get_GSM_state(port):
+            if self._get_GSM_state(port):
                 return True
             if counter > 3:
                 self.logger.debug('GSM switch error')
@@ -264,7 +265,7 @@ class SIAGsm:
         if ser is not None:
             ser.close()
         if r.find(b'OK') != -1:
-            self.logger('Modem is ON')
+            self.logger.debug('Modem is ON')
             return True
         self.logger.debug('Modem is OFF ' + str(r))
         return False

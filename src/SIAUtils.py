@@ -28,7 +28,7 @@ __doc__ = 'This file contains SIAUtil class which consists of different helper m
 class SIAUtil:
     def __init__(self, logger):
         super().__init__()
-        self.config = Configuration()
+        self.config = Configuration('config.ini', logger)
         self.logger = logger
 
     @staticmethod
@@ -98,23 +98,15 @@ class SIAUtil:
         if not os.path.exists(path):
             os.makedirs(path)
 
-        if self.config.autonomous_mode:
-            try:
-                img.tofile(os.path.join(path, name))
-            except Exception as e:
-                self.logger.error('Saving to local storage error : ' + str(e))
-                pass
-            else:
-                self.logger.info('image ' + path + '/' + name + ' saved to storage')
-                pass
         try:
-            img.tofile(os.path.join(self.config.path_storage, name))
+            img.tofile(os.path.join(path, name))
         except Exception as e:
-            self.logger.error('save to local storage error : ' + str(e))
+            self.logger.error('Saving to local storage error : ' + str(e))
             pass
         else:
-            self.logger.info('image ' + self.config.path_storage + '/' + name + ' saved to storage')
+            self.logger.info('image ' + path + '/' + name + ' saved to storage')
             pass
+
 
     def get_free_space_storage(self):
         path = self.get_path_to_storage()

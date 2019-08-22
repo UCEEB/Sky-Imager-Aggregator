@@ -3,6 +3,7 @@ import datetime as dt
 from Configuration import Configuration
 from SIALogger import Logger
 from SIASkyImager import SkyImager
+from SIAGsm import SIAGsm
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -11,9 +12,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 class SIABash():
 
     def __init__(self):
-        self.config = Configuration('config.ini', self.logger)
         self.logger_object = Logger()
         self.logger = self.logger_object.logger
+        self.config = Configuration('config.ini', self.logger)
         self.offline_mode = False
 
     @staticmethod
@@ -38,7 +39,10 @@ class SIABash():
         self.logger_object.set_log_to_file_new_day(self.config.log_path)
         if self.config.autonomous_mode:
             print('Sync time')
+            gsm = SIAGsm(self.logger)
+            gsm.sync_time(self.config.GSM_port)
             print(dt.datetime.utcnow())
+            print(dt.datetime.now())
             self.offline_mode = True
 
         sun_params = dict(cam_latitude=self.config.camera_latitude,
@@ -58,13 +62,16 @@ class SIABash():
                                second='*/' + str(self.config.cap_mod),
                                day_of_week='mon-sun',
                                start_date=sunrise,
-                               end_date=sunset)
+                               end_date=sunset, id='sky-scanner')
+        main_scheduler.start()
 
     @staticmethod
     def run_sky_scanner(sky_imager, offline_mode, config):
+        
+        print('run_sky_scanner')
         sky_imager.process_image(offline_mode)
-        if config.light_sensor:
-            sky_imager.get_irradiance_data()
+        #if config.light_sensor:
+            #sky_imager.get_irradiance_data()
 
 
 bash = SIABash()
