@@ -1,12 +1,6 @@
 #!/usr/bin/python3
-import base64
-import csv
-import hashlib
-import hmac
-import json
-import requests
 import os
-import socket
+import csv
 import datetime as dt
 
 import cv2
@@ -94,81 +88,6 @@ class SIAUtils(Logger):
         return image
 
     @staticmethod
-    def encrypt_message(message, key):
-        return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
-
-    @staticmethod
-    def send_post_request(url, data):
-        post_data = {
-            'data': data
-        }
-        return requests.post(url, data=post_data)
-
-    def upload_json(self, image, file_time):
-        sky_image = base64.b64encode(image).decode('ascii')
-        date_string = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-
-        id = self.config.id
-        key = self.config.key
-        server = self.config.server
-
-        data = {
-            'status': 'ok',
-            'id': id,
-            'time': date_string,
-            'coding': 'Base64',
-            'data': sky_image
-        }
-
-        json_data = json.dumps(data)
-        signature = self.encrypt_message(json_data, key)
-        url = server + signature
-        response = self.send_post_request(url, json_data)
-
-        try:
-            json_response = json.loads(response.text)
-        except Exception as e:
-            raise Exception(e)
-
-        if json_response['status'] != 'ok':
-            raise Exception(json_response['message'])
-
-        return json_response
-
-    def upload_bson(self, image, file_time):
-        date_string = file_time.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-
-        id = self.config.id
-        key = self.config.key
-
-        data = {
-            "status": "ok",
-            "id": id,
-            "time": date_string,
-            "coding": "none"
-        }
-
-        json_data = json.dumps(data)
-        signature = self.encrypt_message(json_data, key)
-
-        if isinstance(image, str) or isinstance(image, bytes):
-            files = [('image', image), ('json', json_data)]
-        else:
-            files = [('image', str(image)), ('json', json_data)]
-
-        response = requests.post(self.config.server + signature, files=files)
-
-        try:
-            json_response = json.loads(response.text)
-        except Exception as e:
-            raise Exception(e)
-
-        if json_response['status'] != 'ok':
-            raise Exception(json_response['message'])
-
-        return json_response
-
-    @staticmethod
     def get_sunrise_and_sunset_date(cam_latitude, cam_longitude, cam_altitude, date=None):
         if not date:
             date = dt.datetime.now(dt.timezone.utc).date()
@@ -241,16 +160,4 @@ class SIAUtils(Logger):
             self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
             self.logger.info('irradiance saved ' + str(irradiance))
 
-    def test_internet_connection(self, host="8.8.8.8", port=53, timeout=3):
-        """
-        Host: 8.8.8.8 (google-public-dns-a.google.com)
-        OpenPort: 53/tcp
-        Service: domain (DNS/TCP)
-        """
-        try:
-            socket.setdefaulttimeout(timeout)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-            return True
-        except Exception as e:
-            self.logger.error('no internet connection : ' + str(e))
-            return False
+
