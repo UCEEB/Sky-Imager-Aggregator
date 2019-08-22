@@ -9,6 +9,13 @@ from src.SIAUtils import SIAUtils
 _test_dir = path.dirname(__file__)
 
 
+def check_io_types(paras=None, output=None):
+    print('Args:\n')
+    for p in paras:
+        print('\t{}: {}\n'.format(p, type(p)))
+    print('Returns\n---------\n{}'.format(type(output)))
+
+
 class TestSIAUtils(TestCase):
     def setUp(self):
         self.utils = SIAUtils()
@@ -37,8 +44,9 @@ class TestSIAUtils(TestCase):
                     self.utils.apply_mask(img_path)
                 )
 
-                print(type(img_path))
-                print(type(self.utils.load_image(img_path)))
+                check_io_types(
+                    paras=[img_path], output=self.utils.load_image(img_path)
+                )
 
     def test_apply_custom_processing(self):
         for image in listdir(path.join(_test_dir, 'dummy')):
