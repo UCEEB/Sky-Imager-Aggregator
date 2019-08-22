@@ -36,7 +36,7 @@ class SIAUtils(Logger):
         Parameters
         ----------
         config_path: {None, str}, optional
-            if not None(default), path to the desired config file
+            if not None(default), path to the desired config file instead of the default one
         """
         super().__init__()
         if not config_path:

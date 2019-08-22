@@ -22,7 +22,6 @@ class Configuration:
             config.read(os.path.join(parent_dir, 'config.ini'))
         else:
             config.read(config_path)
-        self.counter = -1
 
         try:
             self.cap_url = config.get('SETTING', 'cap_url')
