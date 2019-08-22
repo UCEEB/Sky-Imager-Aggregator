@@ -1,31 +1,51 @@
-#!/usr/bin/python3
+from os import listdir, path
 import unittest
 from unittest import TestCase
-from os import listdir, path
-from os.path import abspath, dirname
-import sys
 
-try:
-    parent_dir = dirname(dirname(abspath(__file__)))
-    sys.path.append(parent_dir)
-except Exception as e:
-    raise e
+import cv2
 
 from src.SIAUtils import SIAUtils
+
+_test_dir = path.dirname(__file__)
 
 
 class TestSIAUtils(TestCase):
     def setUp(self):
         self.utils = SIAUtils()
+        self.config = self.utils.config
+
+    def compare_size_of_mask(self):
+        mask_size = self.utils.load_image(self.config.mask_path).shape
+        for image in listdir(path.join(_test_dir, 'dummy')):
+            if path.splitext(image)[-1] in ('.jpg', '.png'):
+                img_path = path.join(_test_dir, 'dummy', image)
+                print(
+                    image,
+                    '\'s size is: \n',
+                    self.utils.load_image(image=img_path).shape[:],
+                    '\nwhile the mask size is:\n',
+                    mask_size[:]
+                )
 
     def test_apply_mask(self):
-        for file in listdir('.\\dummy'):
-            if path.splitext(file)[-1] == '.jpg':
-                print(file)
-                self.utils.apply_mask(file)
+        for image in listdir(path.join(_test_dir, 'dummy')):
+            if path.splitext(image)[-1] in ('.jpg', '.png'):
+                img_path = path.join(_test_dir, 'dummy', image)
+
+                cv2.imwrite(
+                    path.join(_test_dir, 'dummy', 'masked.jpg'),
+                    self.utils.apply_mask(img_path)
+                )
+
+                print(type(img_path))
+                print(type(self.utils.load_image(img_path)))
 
     def test_apply_custom_processing(self):
-        pass
+        for image in listdir(path.join(_test_dir, 'dummy')):
+            if path.splitext(image)[-1] in ('.jpg', '.png'):
+                self.utils.apply_custom_processing(
+                    path.join(_test_dir, 'dummy', image)
+                )
 
     def test_encrypt_message(self):
         pass
