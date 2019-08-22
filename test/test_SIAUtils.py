@@ -21,7 +21,7 @@ class TestSIAUtils(TestCase):
         self.utils = SIAUtils()
         self.config = self.utils.config
 
-    def compare_size_of_mask(self):
+    def test_size_of_mask(self):
         mask_size = self.utils.load_image(self.config.mask_path).shape
         for image in listdir(path.join(_test_dir, 'dummy')):
             if path.splitext(image)[-1] in ('.jpg', '.png'):
