@@ -17,21 +17,82 @@ if os.name != 'nt':
     import minimalmodbus
 
 
-class P2PCon(Logger):
+class GSM(Logger):
     def __init__(self):
         super().__init__()
 
-    def _enable_ppp(self, port):
-        if not self._GSM_switch_on(port):
+    def set_switch(self):
+        pin = 12
+        self.logger.debug("switching modem")
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, GPIO.LOW)
+        time.sleep(3)
+        GPIO.output(pin, GPIO.HIGH)
+
+    def switch_on(self, port):
+        self.logger.debug('GSM switch ON')
+        if self.check_state(port):
+            return True
+
+        counter = 0
+        while True:
+            self.set_switch()
+            time.sleep(6)
+            counter += 1
+            if self.check_state(port):
+                return True
+            if counter > 3:
+                self.logger.debug('GSM switch error')
+
+    def check_state(self, port):
+        self.logger.debug('Getting modem state')
+        time.sleep(1)
+        try:
+            ser = serial.Serial(port, 115200)
+        except Exception as e:
+            self.logger.error('Serial port error: ' + str(e))
+            return False
+        w_buff = b"AT\r\n"
+        ser.write(w_buff)
+        time.sleep(0.5)
+        r = ser.read(ser.inWaiting())
+        if ser is not None:
+            ser.close()
+        if r.find(b'OK') != -1:
+            self.logger('Modem is ON')
+            return True
+        self.logger.debug('Modem is OFF ' + str(r))
+        return False
+
+    def switch_off(self, port):
+        self.logger.debug('switch modem OFF')
+        if not self.check_state(port):
+            return True
+        self.set_switch()
+        if not self.check_state(port):
+            return True
+        else:
+            return False
+
+
+class PPPCon(Logger):
+    def __init__(self):
+        super().__init__()
+        self.GSM = GSM()
+
+    def enable(self, port):
+        if not self.GSM.switch_on(port):
             self.logger.error('GSM model not switch on')
             return False
-        self._disable_ppp()
+        self.disable()
         time.sleep(1)
         self.logger.debug('sudo pppd call')
-        os.system('sudo pppd call' + self.config.GSM_ppp_config_file)
+        os.system('sudo pppd call {}'.format(self.GSM_ppp_config_file))
 
         self.logger.debug('start ppp')
-        if not self._wait_for_start(100):
+        if not self.wait_for_start(100):
             self.logger.error('No ppp enabled')
             return False
 
@@ -39,7 +100,7 @@ class P2PCon(Logger):
         time.sleep(1)
         counter = 0
         while True:
-            if self._ppp_is_running():
+            if self.isRunning():
                 return True
             else:
                 counter += 1
@@ -47,7 +108,12 @@ class P2PCon(Logger):
             if counter > 10:
                 break
 
-    def _wait_for_start(self, timeout):
+    def disable(self):
+        self.logger.debug('disabling ppp')
+        os.system('sudo killall pppd 2 > null')
+        time.sleep(1)
+
+    def wait_for_start(self, timeout):
         pipe_path = "/tmp/pppipe"
         if not os.path.exists(pipe_path):
             os.mkfifo(pipe_path)
@@ -72,83 +138,19 @@ class P2PCon(Logger):
         return False
 
     @staticmethod
-    def _ppp_is_running():
+    def isRunning():
         if os.system('ps -A|grep pppd > null') == 0:
             return True
         return False
-
-    def _disable_ppp(self):
-        self.logger.debug('disabling ppp')
-        os.system('sudo killall pppd 2 > null')
-        time.sleep(1)
-
-
-class GSM(Logger):
-    def __init__(self):
-        super().__init__()
-
-    def _GSM_switch_on(self, port):
-        self.logger.debug('GSM switch ON')
-        if Watcher._get_GSM_state(port):
-            return True
-
-        counter = 0
-        while True:
-            self._GSM_switch()
-            time.sleep(6)
-            counter += 1
-            if Watcher._get_GSM_state(port):
-                return True
-            if counter > 3:
-                self.logger.debug('GSM switch error')
-
-    def _get_GSM_state(self, port):
-        self.logger.debug('Getting modem state')
-        self._disable_ppp()
-        time.sleep(1)
-        try:
-            ser = serial.Serial(port, 115200)
-        except Exception as e:
-            self.logger.error('Serial port error: ' + str(e))
-            return False
-        w_buff = b"AT\r\n"
-        ser.write(w_buff)
-        time.sleep(0.5)
-        r = ser.read(ser.inWaiting())
-        if ser is not None:
-            ser.close()
-        if r.find(b'OK') != -1:
-            self.logger('Modem is ON')
-            return True
-        self.logger.debug('Modem is OFF ' + str(r))
-        return False
-
-    def _GSM_switch_off(self, port):
-        self.logger.debug('switch modem OFF')
-        if not self._get_GSM_state(port):
-            return True
-        self._GSM_switch()
-        if not self._get_GSM_state(port):
-            return True
-        else:
-            return False
-
-    def _GSM_switch(self):
-        pin = 12
-        self.logger.debug("switching modem")
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.LOW)
-        time.sleep(3)
-        GPIO.output(pin, GPIO.HIGH)
 
 
 class Internet(Logger):
     def __init__(self):
         super().__init__()
+        self.GSM = GSM()
+        self.PPP = PPPCon()
 
-    def _test_internet_connection(self, host="8.8.8.8", port=53, timeout=3):
+    def isConnected(self, host="8.8.8.8", port=53, timeout=3):
         """
         Host: 8.8.8.8 (google-public-dns-a.google.com)
         OpenPort: 53/tcp
@@ -162,26 +164,26 @@ class Internet(Logger):
             self.logger.error('no internet connection : ' + str(e))
             return False
 
-    def _enable_internet(self, port):
-        if self._test_internet_connection():
+    def enable(self, port):
+        if self.isConnected():
             self.logger.debug('Internet connection OK')
             return True
-        self._enable_ppp(port)
+        self.PPP.enable(port)
         time.sleep(5)
         counter = 0
 
         while True:
-            if self._test_internet_connection():
+            if self.isConnected():
                 self.logger.debug('Internet connection OK')
                 return True
             else:
                 counter += 1
                 time.sleep(2)
             if counter == 5:
-                self._disable_ppp()
-                self._enable_ppp(port)
+                self.PPP.disable()
+                self.PPP.enable(port)
             if counter == 9:
-                self._GSM_switch_off(port)
+                self.GSM.switch_off(port)
             if counter > 11:
                 break
 
@@ -190,14 +192,15 @@ class WatchDog(Logger):
     def __init__(self):
         super().__init__()
         self.config = Configuration()
+        self.internet = Internet()
 
     @staticmethod
     def encrypt_data(message, key):
         return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
 
     # public methods
-    def sync_time(self, port):
-        if not self._enable_internet(port):
+    def sync_time(self, port, ppp_config_file):
+        if not self.internet.enable(port):
             return False
         counter = 0
         while True:
@@ -284,7 +287,7 @@ class WatchDog(Logger):
         return json_response
 
     def send_SMS(self, phone_num, message, port):
-        self._disable_ppp()
+        self.internet.PPP.disable()
         self._GSM_switch_on(port)
         ser = serial.Serial(port, 115200)
         write_buffer = [b"AT\r\n", b"AT+CMGF-1\r\n", b"AT+CMGS=\"" + phone_num.encode() + b"\"\r\n", message.encode()]
