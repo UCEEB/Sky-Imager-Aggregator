@@ -17,7 +17,7 @@ if os.name != 'nt':
     import minimalmodbus
 
 
-class P2P(Logger):
+class P2PCon(Logger):
     def __init__(self):
         super().__init__()
 
