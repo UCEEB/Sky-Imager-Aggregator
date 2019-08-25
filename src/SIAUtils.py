@@ -107,7 +107,6 @@ class SIAUtil:
             self.logger.info('image ' + path + '/' + name + ' saved to storage')
             pass
 
-
     def get_free_space_storage(self):
         path = self.get_path_to_storage()
         info = os.statvfs(path)

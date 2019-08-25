@@ -15,6 +15,9 @@ class SkyImager:
             self.config = config
         self.utils = SIAUtil(logger)
 
+    def get_free_storage_space(self):
+        return self.utils.get_free_space_storage()
+
     def process_image(self, offline_mode=True):
         cap = cv2.VideoCapture(self.config.cap_url)
 

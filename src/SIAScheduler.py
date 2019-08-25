@@ -1,9 +1,11 @@
 from astral import Astral, Location
 import datetime as dt
+import time
 from Configuration import Configuration
 from SIALogger import Logger
 from SIASkyImager import SkyImager
 from SIAGsm import SIAGsm
+import os.path
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -16,6 +18,17 @@ class SIABash():
         self.logger = self.logger_object.logger
         self.config = Configuration('config.ini', self.logger)
         self.offline_mode = False
+        self.sky_imager = SkyImager(self.logger, self.config)
+        self.sunrise = None
+        self.sunset = None
+        self.sms_sent = False
+        self.sky_scanner = BackgroundScheduler()
+
+    @staticmethod
+    def datetime_from_utc_to_local(utc_datetime):
+        now_timestamp = time.time()
+        offset = dt.datetime.fromtimestamp(now_timestamp) - dt.datetime.utcfromtimestamp(now_timestamp)
+        return utc_datetime + offset
 
     @staticmethod
     def get_sunrise_and_sunset_date(cam_latitude, cam_longitude, cam_altitude, date=None):
@@ -34,45 +47,96 @@ class SIABash():
 
         return sun['sunrise'], sun['sunset']
 
-    def init(self):
+    def gsm_task(self):
+        print('Sync time')
+        gsm_port = self.config.GSM_port
+        gsm = SIAGsm(self.logger)
+        gsm.sync_time(gsm_port)
+        print(dt.datetime.utcnow())
+        self.offline_mode = True
 
-        self.logger_object.set_log_to_file_new_day(self.config.log_path)
-        if self.config.autonomous_mode:
-            print('Sync time')
-            gsm = SIAGsm(self.logger)
-            gsm.sync_time(self.config.GSM_port)
-            print(dt.datetime.utcnow())
-            print(dt.datetime.now())
-            self.offline_mode = True
+        yesterday = dt.datetime.utcnow().date() - dt.timedelta(days=1)
+        log_name = '{}.log'.format(str(yesterday))
+        log_path = os.path.join(self.config.log_path, log_name)
+
+        if os.path.exists(log_path):
+            f = open(log_path, "r")
+            file_data = f.read()
+            f.close()
+            gsm.upload_logfile(file_data)
+
+        images_path = os.path.join(self.config.path_storage, str(yesterday))
+
+        if os.path.exists(images_path):
+            first_file_path = os.listdir(images_path)[0]
+            f = open(first_file_path, "r")
+            img = f.read()
+            gsm.send_thumbnail_file(img)
+            f.close()
+        gsm.GSM_switch_off(gsm_port)
+
+        phone_no = self.config.GSM_phone_no
+        free_space = self.sky_imager.get_free_storage_space()
+        message = 'SkyImg start, time ' + str(dt.datetime.utcnow()) + ', free space ' + free_space
+        gsm.send_SMS(phone_no, message, gsm_port)
+
+        self.sms_sent = True
+
+    def init_sun_time(self):
 
         sun_params = dict(cam_latitude=self.config.camera_latitude,
                           cam_longitude=self.config.camera_longitude,
                           cam_altitude=self.config.camera_altitude
                           )
-        sunrise, sunset = self.get_sunrise_and_sunset_date(**sun_params)
+        self.sunrise, self.sunset = SIABash.get_sunrise_and_sunset_date(**sun_params)
 
-        sunrise -= dt.timedelta(minutes=self.config.added_time)
-        sunset += dt.timedelta(minutes=self.config.added_time)
+        self.sunrise -= dt.timedelta(minutes=self.config.added_time)
+        self.sunset += dt.timedelta(minutes=self.config.added_time)
 
-        date = dt.datetime.now(dt.timezone.utc).date()
+        self.sunset = SIABash.datetime_from_utc_to_local(self.sunset)
+        self.sunrise = SIABash.datetime_from_utc_to_local(self.sunrise)
 
-        sky_imager = SkyImager(self.logger, self.config)
-        main_scheduler = BlockingScheduler()
-        main_scheduler.add_job(SIABash.run_sky_scanner, 'cron', [sky_imager, self.offline_mode, self.config],
-                               second='*/' + str(self.config.cap_mod),
-                               day_of_week='mon-sun',
-                               start_date=sunrise,
-                               end_date=sunset, id='sky-scanner')
-        main_scheduler.start()
+    def single_start(self):
+        self.init_sun_time()
 
-    @staticmethod
-    def run_sky_scanner(sky_imager, offline_mode, config):
-        
+        self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config],
+                                 second='*/' + str(self.config.cap_mod),
+                                 start_date=self.sunrise,
+                                 end_date=self.sunset, id='sky-scanner')
+
+        if not self.sky_scanner.running:
+            self.sky_scanner.start()
+
+    def control_job(self, skyscanner_scheduler):
+        jobs = skyscanner_scheduler.get_jobs()
+        if len(jobs) == 0:
+            # starting new day
+            self.sms_sent = False
+            self.single_start()
+
+    def run_sky_scanner(self, sky_imager, offline_mode, config):
+        print('Setting new logger')
+        self.logger_object.set_log_to_file_new_day(self.config.log_path)
+
+        if self.config.autonomous_mode and not self.sms_sent:
+            print('Sending SMS')
+            self.gsm_task()
+
         print('run_sky_scanner')
         sky_imager.process_image(offline_mode)
-        #if config.light_sensor:
-            #sky_imager.get_irradiance_data()
+        if config.light_sensor:
+            sky_imager.get_irradiance_data()
+
+    def run_control_scheduler(self):
+        main_scheduler = BlockingScheduler()
+        main_scheduler.add_job(self.control_job, 'cron', [self.sky_scanner, self.config],
+                               minutes='*/30')
+        main_scheduler.start()
+
+    def run(self):
+        self.single_start()
+        self.run_control_scheduler()
 
 
 bash = SIABash()
-bash.init()
+bash.run()

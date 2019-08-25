@@ -24,7 +24,6 @@ class SIAGsm:
         self.config = Configuration(path_config='config.ini', logger=None)
         self.logger = logger
 
-    # public methods
     def sync_time(self, port):
         if not self._enable_internet(port):
             return False
@@ -43,7 +42,7 @@ class SIAGsm:
 
     def send_SMS(self, phone_num, message, port):
         self._disable_ppp()
-        self._GSM_switch_on(port)
+        self.GSM_switch_on(port)
         ser = serial.Serial(port, 115200)
         write_buffer = [b"AT\r\n", b"AT+CMGF-1\r\n", b"AT+CMGS=\"" + phone_num.encode() + b"\"\r\n", message.encode()]
 
@@ -71,14 +70,14 @@ class SIAGsm:
             return "Exception " + str(e)
         return response
 
-    def send_thumbnail_file(self, log):
+    def send_thumbnail_file(self, file):
         self.logger.debug('Uploading log to the server')
         counter = 0
         while True:
             counter += 1
             self._enable_internet(self.config)
             try:
-                response = self._upload_bson()
+                response = self._upload_bson(file, dt.datetime.now(), self.config.GSM_thumbnail_upload_server)
                 self.logger.info('Upload thumbnail to server OK')
                 self._disable_ppp()
                 return
@@ -88,16 +87,15 @@ class SIAGsm:
                 self.logger.error('Upload thumbnail to server error: too many attempts')
                 break
         self.logger.debug('Upload thumbnail to server end')
-        self._disable_ppp()
 
-    def _upload_logfile(self, log):
+    def upload_logfile(self, log):
         self.logger.debug('Start upload log to server')
         counter = 0
         while True:
             counter += 1
             self._enable_internet(self.config.GSM_port)
             try:
-                response = self.upload_bson(log, dt.datetime.utcnow(), self.config.GSM_log_upload_server)
+                response = self._upload_bson(log, dt.datetime.now(), self.config.GSM_log_upload_server)
                 self.logger.info('upload log to server OK')
 
                 return
@@ -159,7 +157,7 @@ class SIAGsm:
                 self._disable_ppp()
                 self._enable_ppp(port)
             if counter == 9:
-                self._GSM_switch_off(port)
+                self.GSM_switch_off(port)
             if counter > 11:
                 break
 
@@ -173,7 +171,7 @@ class SIAGsm:
             return False
 
     def _enable_ppp(self, port):
-        if not self._GSM_switch_on(port):
+        if not self.GSM_switch_on(port):
             self.logger.error('GSM model not switch on')
             return False
         self._disable_ppp()
@@ -213,7 +211,7 @@ class SIAGsm:
                     if message.find('UP') != -1:
                         self.logger.debug('ppp UP')
                         return True
-                    
+
                 except Exception as e:
                     self.logger.info('error' + str(e))
                     return False
@@ -234,14 +232,14 @@ class SIAGsm:
         os.system('sudo killall pppd 2 > null')
         time.sleep(1)
 
-    def _GSM_switch_on(self, port):
+    def GSM_switch_on(self, port):
         self.logger.debug('GSM switch ON')
         if self._get_GSM_state(port):
             return True
 
         counter = 0
         while True:
-            self._GSM_switch()
+            self.GSM_switch()
             time.sleep(6)
             counter += 1
             if self._get_GSM_state(port):
@@ -270,17 +268,17 @@ class SIAGsm:
         self.logger.debug('Modem is OFF ' + str(r))
         return False
 
-    def _GSM_switch_off(self, port):
+    def GSM_switch_off(self, port):
         self.logger.debug('switch modem OFF')
         if not self._get_GSM_state(port):
             return True
-        self._GSM_switch()
+        self.GSM_switch()
         if not self._get_GSM_state(port):
             return True
         else:
             return False
 
-    def _GSM_switch(self):
+    def GSM_switch(self):
         pin = 12
         self.logger.debug("switching modem")
         GPIO.setwarnings(False)
