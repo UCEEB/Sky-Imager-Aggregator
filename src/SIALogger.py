@@ -13,7 +13,6 @@ class Logger:
         console_logger = logging.StreamHandler()
         logger.addHandler(console_logger)  # logging to console
         logger.setLevel(log_level)
-        logger.info("Setting logger...")
 
         return logger, console_logger
 

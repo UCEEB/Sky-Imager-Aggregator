@@ -44,7 +44,7 @@ class SIAGsm:
         self._disable_ppp()
         self.GSM_switch_on(port)
         ser = serial.Serial(port, 115200)
-        write_buffer = [b"AT\r\n", b"AT+CMGF-1\r\n", b"AT+CMGS=\"" + phone_num.encode() + b"\"\r\n", message.encode()]
+        write_buffer = [b"AT\r\n", b"AT+CMGF=1\r\n", b"AT+CMGS=\"" + phone_num.encode() + b"\"\r\n", message.encode()]
 
         ser.write(write_buffer[0])
         time.sleep(0.2)
@@ -65,6 +65,7 @@ class SIAGsm:
             time.sleep(0.2)
             response = ser.read(ser.inWaiting())
         except Exception as e:
+            print('SMS exception' + str(e))
             if ser is not None:
                 ser.close()
             return "Exception " + str(e)
