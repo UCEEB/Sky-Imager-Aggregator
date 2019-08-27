@@ -7,6 +7,7 @@ from SIASkyImager import SkyImager
 from SIAGsm import SIAGsm
 import os.path
 import threading
+import gzip
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -63,17 +64,20 @@ class SIABash():
         if os.path.exists(log_path):
             f = open(log_path, "r")
             file_data = f.read()
+            file_data = gzip.compress(str.encode(file_data))
             f.close()
-            gsm.upload_logfile(file_data)
+            print('Sending log: '+log_path + ' from day: '+ str(yesterday))
+            gsm.upload_logfile(file_data, yesterday)
 
-        images_path = os.path.join(self.config.path_storage, str(yesterday))
+        images_path = os.path.join(self.config.path_storage, yesterday.strftime("%y-%m-%d"))
 
-        if os.path.exists(images_path):
+        if os.path.isdir(images_path):
             first_file_path = os.listdir(images_path)[0]
             f = open(first_file_path, "r")
             img = f.read()
-            gsm.send_thumbnail_file(img)
             f.close()
+            print('Sending thumbnail: '+first_file_path)
+            gsm.send_thumbnail_file(img, yesterday)
 
         phone_no = self.config.GSM_phone_no
         free_space = self.sky_imager.get_free_storage_space()
@@ -118,9 +122,8 @@ class SIABash():
             self.single_start()
 
     def run_sky_scanner(self, sky_imager, offline_mode, config):
-        if self.new_day:
-            print('Setting new logger')
-            self.logger_object.set_log_to_file_new_day(self.config.log_path)
+        print('Setting new logger')
+        self.logger_object.set_log_to_file_new_day(self.config.log_path)
 
         if self.config.autonomous_mode and self.new_day:
             print('GSM task for new day')
@@ -143,7 +146,7 @@ class SIABash():
             self.gsm_task()
         self.single_start()
         self.run_control_scheduler()
-
+        
 
 bash = SIABash()
 bash.run()

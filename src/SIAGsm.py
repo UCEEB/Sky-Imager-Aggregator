@@ -71,14 +71,14 @@ class SIAGsm:
             return "Exception " + str(e)
         return response
 
-    def send_thumbnail_file(self, file):
-        self.logger.debug('Uploading log to the server')
+    def send_thumbnail_file(self, file, date):
+        self.logger.debug('Uploading thumbnail to the server')
         counter = 0
         while True:
             counter += 1
             self._enable_internet(self.config)
             try:
-                response = self._upload_bson(file, dt.datetime.now(), self.config.GSM_thumbnail_upload_server)
+                response = self._upload_bson(file, date, self.config.GSM_thumbnail_upload_server)
                 self.logger.info('Upload thumbnail to server OK')
                 self._disable_ppp()
                 return
@@ -89,14 +89,14 @@ class SIAGsm:
                 break
         self.logger.debug('Upload thumbnail to server end')
 
-    def upload_logfile(self, log):
-        self.logger.debug('Start upload log to server')
+    def upload_logfile(self, log, date):
+        self.logger.debug('Uploading log to the server')
         counter = 0
         while True:
             counter += 1
             self._enable_internet(self.config.GSM_port)
             try:
-                response = self._upload_bson(log, dt.datetime.now(), self.config.GSM_log_upload_server)
+                response = self._upload_bson(log, date, self.config.GSM_log_upload_server)
                 self.logger.info('upload log to server OK')
 
                 return
@@ -119,7 +119,7 @@ class SIAGsm:
             "status": "ok",
             "id": id,
             "time": date_string,
-            "coding": "none"
+            "coding": "none",
         }
         jsondata = json.dumps(data)
         signature = encrypt_data(jsondata, key)
