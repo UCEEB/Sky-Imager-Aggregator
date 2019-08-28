@@ -38,7 +38,6 @@ class SIAIrradiance:
         counter = 0
         while True:
             try:
-                self.logger.debug('Reading irradiance data')
                 irradiance, ext_temperature, cell_temperature = self._get_data_from_sensor(
                     port, address, baudrate, bytesize, parity, stopbits)
             except Exception as e:

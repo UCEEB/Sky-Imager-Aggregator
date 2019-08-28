@@ -25,7 +25,6 @@ class SkyImager:
             self.logger.error('Camera connection error')
             return
         img_time = dt.datetime.utcnow()
-        self.logger.info('Downloading image from camera')
         ret, frame = cap.read()
 
         crop0 = self.config.crop[0]
@@ -40,7 +39,6 @@ class SkyImager:
 
             use_private_lib = self.config.use_private_lib
             if use_private_lib:
-                self.logger.info('Applying custom processing')
                 image = SIAUtil.apply_custom_processing(image)
 
         is_success, buffer = cv2.imencode('.jpg', image,
@@ -75,3 +73,6 @@ class SkyImager:
             self.utils.save_irradiance_csv(csv_time, irradiance, ext_temperature, cell_temperature)
         except Exception as e:
             self.logger.error('Unable to get data from light sensor: ' + str(e))
+            
+    def test_internet_connection(self):
+        return self.utils.test_internet_connection()

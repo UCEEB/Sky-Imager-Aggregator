@@ -86,7 +86,6 @@ class SIABash():
         print('Sending SMS to: '+ phone_no)
         response = gsm.send_SMS(phone_no, message, gsm_port)
         print('SMS response: '+ str(response))
-        self.new_day = False
         gsm.GSM_switch_off(gsm_port)
 
     def init_sun_time(self):
@@ -104,6 +103,7 @@ class SIABash():
         self.sunrise = SIABash.datetime_from_utc_to_local(self.sunrise)
 
     def single_start(self):
+        print('single start')
         self.init_sun_time()
 
         self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config],
@@ -122,13 +122,16 @@ class SIABash():
             self.single_start()
 
     def run_sky_scanner(self, sky_imager, offline_mode, config):
-        print('Setting new logger')
-        self.logger_object.set_log_to_file_new_day(self.config.log_path)
 
-        if self.config.autonomous_mode and self.new_day:
-            print('GSM task for new day')
-            t = threading.Thread(target = self.gsm_task())
-            t.start()
+        if self.new_day:
+            self.logger.info('New day: setting new logger')
+            self.logger_object.set_log_to_file_new_day(self.config.log_path)
+
+            if self.config.autonomous_mode:
+                self.logger.info('Sending sms')
+                t = threading.Thread(target = self.gsm_task())
+                t.start()
+            self.new_day = False
             
         print('run_sky_scanner')
         sky_imager.process_image(offline_mode)
@@ -142,8 +145,8 @@ class SIABash():
         main_scheduler.start()
 
     def run(self):
-        if self.config.autonomous_mode and self.new_day:
-            self.gsm_task()
+        if not self.sky_imager.test_internet_connection():
+            self.offline_mode = True
         self.single_start()
         self.run_control_scheduler()
         
