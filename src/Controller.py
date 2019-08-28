@@ -17,73 +17,98 @@ if os.name != 'nt':
     import minimalmodbus
 
 
-class GSM(Logger):
-    def __init__(self):
+class Modem(Logger):
+    def __init__(self, port='ttyS0', pin=7):
         super().__init__()
+        self.port = port
+        self.pin = pin
+        if self.isRunning():
+            self.power = True
+        else:
+            self.power = False
 
-    def set_switch(self):
-        pin = 12
-        self.logger.debug("switching modem")
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.LOW)
-        time.sleep(3)
-        GPIO.output(pin, GPIO.HIGH)
+    def switch_on(self):
+        if not self.power:
+            self.logger.debug("Switching modem on...")
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            GPIO.setup(self.pin, GPIO.OUT)
+            GPIO.output(self.pin, GPIO.LOW)
+            time.sleep(3)
+            GPIO.output(self.pin, GPIO.HIGH)
+            self.power = self.isRunning()
+        else:
+            self.logger.debug("Modem is already powered on...")
 
-    def switch_on(self, port):
+    def switch_off(self):
+        if self.power:
+            self.logger.debug("Switching modem off...")
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            GPIO.setup(self.pin, GPIO.OUT)
+            GPIO.output(self.pin, GPIO.LOW)
+            time.sleep(3)
+            GPIO.output(self.pin, GPIO.HIGH)
+            GPIO.cleanup()
+            self.power = self.isRunning()
+        else:
+            self.logger.debug("GSM modem is already OFF...")
+
+    def force_to_switch_on(self, no_of_attempts=5):
         self.logger.debug('GSM switch ON')
-        if self.check_state(port):
+        if self.isRunning():
+            self.logger.info('GSM is already ON and running!')
             return True
-
+        # try to restart the modem for 5 (default parameter) times
         counter = 0
         while True:
-            self.set_switch()
+            self.switch_on()
             time.sleep(6)
             counter += 1
-            if self.check_state(port):
+            if self.isRunning():
+                self.logger.info('GSM is ON and ready to go!')
                 return True
-            if counter > 3:
-                self.logger.debug('GSM switch error')
+            if counter > no_of_attempts:
+                self.logger.debug('GSM switch error! So many attempts without any success!')
+                return False
 
-    def check_state(self, port):
-        self.logger.debug('Getting modem state')
-        time.sleep(1)
+    def isRunning(self):
+        self.logger.debug('Getting modem state...')
         try:
-            ser = serial.Serial(port, 115200)
+            ser = serial.Serial('/dev/{}'.format(self.port), 115200)
         except Exception as e:
-            self.logger.error('Serial port error: ' + str(e))
+            self.logger.error('Serial port error: {}'.format(e))
             return False
+
         w_buff = b"AT\r\n"
         ser.write(w_buff)
         time.sleep(0.5)
-        r = ser.read(ser.inWaiting())
-        if ser is not None:
+        queue = ser.read(ser.inWaiting())
+        if ser:
             ser.close()
-        if r.find(b'OK') != -1:
-            self.logger('Modem is ON')
+        if queue.find(b'OK') != -1:
+            self.logger.info('Modem is running')
             return True
-        self.logger.debug('Modem is OFF ' + str(r))
+
+        self.logger.debug('Modem is OFF: {}'.format(queue))
         return False
 
-    def switch_off(self, port):
-        self.logger.debug('switch modem OFF')
-        if not self.check_state(port):
-            return True
-        self.set_switch()
-        if not self.check_state(port):
-            return True
-        else:
-            return False
+
+if __name__ == '__main__':
+    m = Modem()
+    print(m.power)
+    if not m.power:
+        m.switch_on()
+    print(m.power)
 
 
-class PPPCon(Logger):
+class P2PCon(Logger):
     def __init__(self):
         super().__init__()
-        self.GSM = GSM()
+        self.GSM = Modem()
 
     def enable(self, port):
-        if not self.GSM.switch_on(port):
+        if not self.GSM.force_to_switch_on(port):
             self.logger.error('GSM model not switch on')
             return False
         self.disable()
@@ -147,10 +172,10 @@ class PPPCon(Logger):
 class Internet(Logger):
     def __init__(self):
         super().__init__()
-        self.GSM = GSM()
-        self.PPP = PPPCon()
+        self.GSM = Modem()
+        self.PPP = P2PCon()
 
-    def isConnected(self, host="8.8.8.8", port=53, timeout=3):
+    def test_connection(self, host="8.8.8.8", port=53, timeout=3):
         """
         Host: 8.8.8.8 (google-public-dns-a.google.com)
         OpenPort: 53/tcp
@@ -165,7 +190,7 @@ class Internet(Logger):
             return False
 
     def enable(self, port):
-        if self.isConnected():
+        if self.test_connection():
             self.logger.debug('Internet connection OK')
             return True
         self.PPP.enable(port)
@@ -173,7 +198,7 @@ class Internet(Logger):
         counter = 0
 
         while True:
-            if self.isConnected():
+            if self.test_connection():
                 self.logger.debug('Internet connection OK')
                 return True
             else:
@@ -287,7 +312,7 @@ class WatchDog(Logger):
         return json_response
 
     def send_SMS(self, phone_num, message, port):
-        self.internet.PPP.disable()
+        #self.internet.PPP.disable()
         self._GSM_switch_on(port)
         ser = serial.Serial(port, 115200)
         write_buffer = [b"AT\r\n", b"AT+CMGF-1\r\n", b"AT+CMGS=\"" + phone_num.encode() + b"\"\r\n", message.encode()]
@@ -384,7 +409,3 @@ class WatchDog(Logger):
         if json_response['status'] != 'ok':
             raise Exception(json_response['message'])
         return json_response
-
-
-
-
