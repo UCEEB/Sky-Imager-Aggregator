@@ -8,13 +8,12 @@ import hmac
 import json
 
 import requests
+import serial
+import RPi.GPIO as GPIO
+import minimalmodbus
+
 from src.Configuration import Configuration
 from src.SIALogger import Logger
-
-if os.name != 'nt':
-    import serial
-    import RPi.GPIO as GPIO
-    import minimalmodbus
 
 
 class Modem(Logger):
@@ -22,41 +21,37 @@ class Modem(Logger):
         super().__init__()
         self.port = port
         self.pin = pin
-        if self.isRunning():
-            self.power = True
-        else:
-            self.power = False
+
+    def set_pin(self, warnings=False):
+        GPIO.setwarnings(warnings)
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(self.pin, GPIO.OUT)
+        GPIO.output(self.pin, GPIO.LOW)
+        time.sleep(3)
+        GPIO.output(self.pin, GPIO.HIGH)
 
     def switch_on(self):
-        if not self.power:
+        if not self.isPowerOn():
             self.logger.debug("Switching modem on...")
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)
-            GPIO.setup(self.pin, GPIO.OUT)
-            GPIO.output(self.pin, GPIO.LOW)
-            time.sleep(3)
-            GPIO.output(self.pin, GPIO.HIGH)
-            self.power = self.isRunning()
+            self.set_pin()
+            # give modem some time to login
+            time.sleep(10)
         else:
             self.logger.debug("Modem is already powered on...")
 
     def switch_off(self):
-        if self.power:
+        if self.isPowerOn():
             self.logger.debug("Switching modem off...")
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)
-            GPIO.setup(self.pin, GPIO.OUT)
-            GPIO.output(self.pin, GPIO.LOW)
-            time.sleep(3)
-            GPIO.output(self.pin, GPIO.HIGH)
+            self.set_pin()
             GPIO.cleanup()
-            self.power = self.isRunning()
+            # give modem some time to log out
+            time.sleep(10)
         else:
             self.logger.debug("GSM modem is already OFF...")
 
-    def force_to_switch_on(self, no_of_attempts=5):
+    def force_switch_on(self, no_of_attempts=5):
         self.logger.debug('GSM switch ON')
-        if self.isRunning():
+        if self.isPowerOn():
             self.logger.info('GSM is already ON and running!')
             return True
         # try to restart the modem for 5 (default parameter) times
@@ -65,14 +60,14 @@ class Modem(Logger):
             self.switch_on()
             time.sleep(6)
             counter += 1
-            if self.isRunning():
+            if self.isPowerOn():
                 self.logger.info('GSM is ON and ready to go!')
                 return True
             if counter > no_of_attempts:
                 self.logger.debug('GSM switch error! So many attempts without any success!')
                 return False
 
-    def isRunning(self):
+    def isPowerOn(self):
         self.logger.debug('Getting modem state...')
         try:
             ser = serial.Serial('/dev/{}'.format(self.port), 115200)
@@ -84,22 +79,15 @@ class Modem(Logger):
         ser.write(w_buff)
         time.sleep(0.5)
         queue = ser.read(ser.inWaiting())
+        time.sleep(0.5)
         if ser:
             ser.close()
         if queue.find(b'OK') != -1:
-            self.logger.info('Modem is running')
+            self.logger.info('Modem is ON')
             return True
 
-        self.logger.debug('Modem is OFF: {}'.format(queue))
+        self.logger.debug('Modem is OFF')
         return False
-
-
-if __name__ == '__main__':
-    m = Modem()
-    print(m.power)
-    if not m.power:
-        m.switch_on()
-    print(m.power)
 
 
 class P2PCon(Logger):
@@ -108,7 +96,7 @@ class P2PCon(Logger):
         self.GSM = Modem()
 
     def enable(self, port):
-        if not self.GSM.force_to_switch_on(port):
+        if not self.GSM.force_switch_on(port):
             self.logger.error('GSM model not switch on')
             return False
         self.disable()
