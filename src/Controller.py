@@ -12,7 +12,6 @@ import serial
 import RPi.GPIO as GPIO
 import minimalmodbus
 
-from src.Configuration import Configuration
 from src.SIALogger import Logger
 
 
@@ -53,7 +52,6 @@ class Modem(Logger):
         self.logger.debug('GSM switch ON')
         if self.isPowerOn():
             self.logger.info('GSM is already ON and running!')
-            return True
         # try to restart the modem for 5 (default parameter) times
         counter = 0
         while True:
@@ -62,10 +60,8 @@ class Modem(Logger):
             counter += 1
             if self.isPowerOn():
                 self.logger.info('GSM is ON and ready to go!')
-                return True
             if counter > no_of_attempts:
                 self.logger.debug('GSM switch error! So many attempts without any success!')
-                return False
 
     def isPowerOn(self):
         self.logger.debug('Getting modem state...')
@@ -89,15 +85,28 @@ class Modem(Logger):
         self.logger.debug('Modem is OFF')
         return False
 
+    def isOnline(self, host="8.8.8.8", port=53, timeout=6):
+        """
+        Host: 8.8.8.8 (google-public-dns-a.google.com)
+        OpenPort: 53/tcp
+        Service: domain (DNS/TCP)
+        """
+        try:
+            socket.setdefaulttimeout(timeout)
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+            return True
+        except Exception as e:
+            self.logger.error('no internet connection : {}'.format(e))
+            return False
 
-class P2PCon(Logger):
+
+class P2PCon(Modem):
     def __init__(self):
         super().__init__()
-        self.GSM = Modem()
 
-    def enable(self, port):
-        if not self.GSM.force_switch_on(port):
-            self.logger.error('GSM model not switch on')
+    def enable(self):
+        if not self.isPowerOn():
+            self.logger.error('GSM modem is not switched on')
             return False
         self.disable()
         time.sleep(1)
@@ -157,28 +166,14 @@ class P2PCon(Logger):
         return False
 
 
-class Internet(Logger):
+class Internet(Modem):
     def __init__(self):
         super().__init__()
-        self.GSM = Modem()
-        self.PPP = P2PCon()
 
-    def test_connection(self, host="8.8.8.8", port=53, timeout=3):
-        """
-        Host: 8.8.8.8 (google-public-dns-a.google.com)
-        OpenPort: 53/tcp
-        Service: domain (DNS/TCP)
-        """
-        try:
-            socket.setdefaulttimeout(timeout)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-            return True
-        except Exception as e:
-            self.logger.error('no internet connection : ' + str(e))
-            return False
+
 
     def enable(self, port):
-        if self.test_connection():
+        if self.isOnline():
             self.logger.debug('Internet connection OK')
             return True
         self.PPP.enable(port)
@@ -186,7 +181,7 @@ class Internet(Logger):
         counter = 0
 
         while True:
-            if self.test_connection():
+            if self.isOnline():
                 self.logger.debug('Internet connection OK')
                 return True
             else:
@@ -200,6 +195,10 @@ class Internet(Logger):
             if counter > 11:
                 break
 
+if __name__ == '__main__':
+    net = Internet()
+    net.switch_on()
+    print(net.isOnline())
 
 class WatchDog(Logger):
     def __init__(self):
@@ -211,7 +210,6 @@ class WatchDog(Logger):
     def encrypt_data(message, key):
         return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
 
-    # public methods
     def sync_time(self, port, ppp_config_file):
         if not self.internet.enable(port):
             return False
