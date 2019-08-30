@@ -9,6 +9,7 @@ import json
 
 import requests
 import serial
+from serial.serialutil import SerialException
 import RPi.GPIO as GPIO
 import minimalmodbus
 
@@ -16,10 +17,11 @@ from src.SIALogger import Logger
 
 
 class Modem(Logger):
-    def __init__(self, port='ttyS0', pin=7):
+    def __init__(self, port='/dev/ttyS0', pin=7):
         super().__init__()
         self.port = port
         self.pin = pin
+        self.serial_com = None
 
     def set_pin(self, warnings=False):
         GPIO.setwarnings(warnings)
@@ -63,28 +65,36 @@ class Modem(Logger):
             if counter > no_of_attempts:
                 self.logger.debug('GSM switch error! So many attempts without any success!')
 
-    @staticmethod
-    def enable_serial_communication(port, baudrate=115200, timeout=1):
-        return serial.Serial(port, baudrate=baudrate, timeout=timeout)
+    def enable_serial_port(self, port, baudrate=115200, timeout=1):
+        if not self.serial_com:
+            try:
+                self.logger.info('Enabling serial port {} with baudrate {}'.format(port, baudrate))
+                self.serial_com = serial.Serial(port, baudrate=baudrate, timeout=timeout)
+            except Exception as e:
+                self.logger.debug('Serial port error: {}'.format(e))
+
+    def send_command(self, command):
+        if not self.serial_com:
+            raise SerialException
+        time.sleep(0.2)
+        self.serial_com.write(command.encode() + b'\r\n')
+        time.sleep(0.2)
 
     def isPowerOn(self):
         self.logger.debug('Getting modem state...')
 
         try:
-            ser = self.enable_serial_communication('/dev/{}'.format(self.port))
+            self.enable_serial_port(self.port)
         except Exception as e:
-            self.logger.error('Serial port error: {}'.format(e))
+            self.logger.debug(e)
             return False
 
-        w_buff = b"AT\r\n"
-        ser.write(w_buff)
-        time.sleep(0.5)
-        queue = ser.read(ser.inWaiting())
+        queue = self.send_command('AT')
         time.sleep(0.5)
 
-        if ser:
-            ser.close()
-
+        if self.serial_com:
+            self.serial_com.close()
+        print(queue)
         if queue.find(b'OK') != -1:
             self.logger.info('Modem is ON')
             return True
@@ -92,26 +102,53 @@ class Modem(Logger):
         self.logger.debug('Modem is OFF')
         return False
 
-    def isOnline(self, host="8.8.8.8", port=53, timeout=6):
-        """
-        Host: 8.8.8.8 (google-public-dns-a.google.com)
-        OpenPort: 53/tcp
-        Service: domain (DNS/TCP)
-        """
-        try:
-            socket.setdefaulttimeout(timeout)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-            return True
-        except Exception as e:
-            self.logger.error('no internet connection : {}'.format(e))
-            return False
-
 
 class Messenger(Modem):
     def __init__(self):
         super().__init__()
 
-    def
+    def submit_text(self, phone_num, sms_text):
+        self.enable_serial_port(self.port)
+        # transmitting AT command
+        self.send_command('AT')
+        time.sleep(0.2)
+        if self.serial_com.inWaiting() == 0:
+            return False
+        try:
+            self.serial_com.read(self.serial_com.inWaiting())
+            # select message format
+            self.send_command('AT+CMGF=1')
+            # disable the Echo
+            self.send_command('ATE0')
+            # send a message to a particular number
+            self.send_command('AT+CMGS=\"{}\"'.format(phone_num))
+            # send text
+            self.send_command(sms_text)
+            # enable to send sms
+            self.serial_com.write(b"\x1a\r\n")  # 0x1a : send   0x1b : Cancel send
+            self.serial_com.read(self.serial_com.inWaiting())
+        except Exception:
+            if self.serial_com:
+                self.serial_com.close()
+            return False
+        return True
+
+    def send_sms(self, phone_num, sms_text):
+        outbox = True
+        while outbox:
+            print('Forcing to send SMS to {}...'.format(phone_num))
+            outbox = self.submit_text(phone_num, sms_text)
+            time.sleep(0.3)
+        return outbox
+
+
+if __name__ == '__main__':
+    m = Messenger()
+    # print(m.isPowerOn())
+    print(m.send_sms('775289813', 'Here we GO!'))
+
+
+
 
 class P2PCon(Modem):
     def __init__(self):
@@ -183,8 +220,6 @@ class Internet(Modem):
     def __init__(self):
         super().__init__()
 
-
-
     def enable(self, port):
         if self.isOnline():
             self.logger.debug('Internet connection OK')
@@ -208,16 +243,25 @@ class Internet(Modem):
             if counter > 11:
                 break
 
-if __name__ == '__main__':
-    net = Internet()
-    net.switch_on()
-    print(net.isOnline())
 
 class WatchDog(Logger):
     def __init__(self):
         super().__init__()
-        self.config = Configuration()
         self.internet = Internet()
+
+    def isOnline(self, host="8.8.8.8", port=53, timeout=6):
+        """
+        Host: 8.8.8.8 (google-public-dns-a.google.com)
+        OpenPort: 53/tcp
+        Service: domain (DNS/TCP)
+        """
+        try:
+            socket.setdefaulttimeout(timeout)
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+            return True
+        except Exception as e:
+            self.logger.error('no internet connection : {}'.format(e))
+            return False
 
     @staticmethod
     def encrypt_data(message, key):
@@ -311,7 +355,7 @@ class WatchDog(Logger):
         return json_response
 
     def send_SMS(self, phone_num, message, port):
-        #self.internet.PPP.disable()
+        # self.internet.PPP.disable()
         self._GSM_switch_on(port)
         ser = serial.Serial(port, 115200)
         write_buffer = [b"AT\r\n", b"AT+CMGF-1\r\n", b"AT+CMGS=\"" + phone_num.encode() + b"\"\r\n", message.encode()]
