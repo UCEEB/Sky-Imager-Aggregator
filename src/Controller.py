@@ -63,10 +63,15 @@ class Modem(Logger):
             if counter > no_of_attempts:
                 self.logger.debug('GSM switch error! So many attempts without any success!')
 
+    @staticmethod
+    def enable_serial_communication(port, baudrate=115200, timeout=1):
+        return serial.Serial(port, baudrate=baudrate, timeout=timeout)
+
     def isPowerOn(self):
         self.logger.debug('Getting modem state...')
+
         try:
-            ser = serial.Serial('/dev/{}'.format(self.port), 115200)
+            ser = self.enable_serial_communication('/dev/{}'.format(self.port))
         except Exception as e:
             self.logger.error('Serial port error: {}'.format(e))
             return False
@@ -76,8 +81,10 @@ class Modem(Logger):
         time.sleep(0.5)
         queue = ser.read(ser.inWaiting())
         time.sleep(0.5)
+
         if ser:
             ser.close()
+
         if queue.find(b'OK') != -1:
             self.logger.info('Modem is ON')
             return True
@@ -99,6 +106,12 @@ class Modem(Logger):
             self.logger.error('no internet connection : {}'.format(e))
             return False
 
+
+class Messenger(Modem):
+    def __init__(self):
+        super().__init__()
+
+    def
 
 class P2PCon(Modem):
     def __init__(self):
