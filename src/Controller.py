@@ -143,14 +143,6 @@ class Messenger(Modem):
         return outbox
 
 
-if __name__ == '__main__':
-    m = Messenger()
-    # print(m.isPowerOn())
-    print(m.send_sms('775289813', 'Here we GO!'))
-
-
-
-
 class P2PCon(Modem):
     def __init__(self):
         super().__init__()
