@@ -127,7 +127,8 @@ class Messenger(Modem):
             # enable to send sms
             self.serial_com.write(b"\x1a\r\n")  # 0x1a : send   0x1b : Cancel send
             self.serial_com.read(self.serial_com.inWaiting())
-        except Exception:
+        except Exception as e:
+            self.logger.debug(e)
             if self.serial_com:
                 self.serial_com.close()
             return False
