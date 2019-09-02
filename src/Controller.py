@@ -23,7 +23,7 @@ class Modem(Logger):
         self.pin = pin
         self.serial_com = None
 
-    def set_pin(self, warnings=False):
+    def setup_modem(self, warnings=False):
         GPIO.setwarnings(warnings)
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin, GPIO.OUT)
@@ -34,7 +34,7 @@ class Modem(Logger):
     def switch_on(self):
         if not self.isPowerOn():
             self.logger.debug("Switching modem on...")
-            self.set_pin()
+            self.setup_modem()
             # give modem some time to login
             time.sleep(10)
         else:
@@ -43,7 +43,7 @@ class Modem(Logger):
     def switch_off(self):
         if self.isPowerOn():
             self.logger.debug("Switching modem off...")
-            self.set_pin()
+            self.setup_modem()
             GPIO.cleanup()
             # give modem some time to log out
             time.sleep(10)
