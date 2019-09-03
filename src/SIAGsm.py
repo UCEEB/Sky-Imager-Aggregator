@@ -161,6 +161,8 @@ class SIAGsm:
                 self.GSM_switch_off(port)
             if counter > 11:
                 break
+    def disable_internet(self):
+        self._disable_ppp()
 
     def _test_internet_connection(self, host="8.8.8.8", port=53, timeout=3):
         try:

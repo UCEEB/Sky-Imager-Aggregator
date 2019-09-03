@@ -65,12 +65,17 @@ class SIABash():
         images_path = os.path.join(self.config.path_storage, yesterday.strftime("%y-%m-%d"))
 
         if os.path.isdir(images_path):
-            first_file_path = os.listdir(images_path)[0]
-            f = open(first_file_path, "r")
-            img = f.read()
-            f.close()
-            self.logger.info('Sending thumbnail: ' + first_file_path)
-            gsm.send_thumbnail_file(img, yesterday)
+            first_file_path=''
+            try:
+                first_file_path = os.listdir(images_path)[0]
+            except:
+                return
+            else:
+                f = open(first_file_path, "r")
+                img = f.read()
+                f.close()
+                self.logger.info('Sending thumbnail: ' + first_file_path)
+                gsm.send_thumbnail_file(img, yesterday)
 
     def _send_SMS_report(self, gsm, gsm_port):
         phone_no = self.config.GSM_phone_no
@@ -78,7 +83,6 @@ class SIABash():
         message = 'SkyImg start, time ' + str(dt.datetime.utcnow()) + ', free space ' + free_space
         self.logger.info(message)
         response = gsm.send_SMS(phone_no, message, gsm_port)
-        gsm.GSM_switch_off(gsm_port)
 
     def gsm_task(self):
         gsm_port = self.config.GSM_port
@@ -88,6 +92,9 @@ class SIABash():
         self.offline_mode = True
         self._send_yesterday_report(gsm)
         self._send_SMS_report(gsm, gsm_port)
+        gsm.disable_internet()
+        gsm.GSM_switch_off(gsm_port)
+
 
     def init_sun_time(self):
 
@@ -154,3 +161,4 @@ class SIABash():
 if __name__ == '__main__':
     bash = SIABash()
     bash.run()
+
