@@ -78,7 +78,7 @@ def _upload_thumbnail(logger, config, image, image_time):
         counter += 1
         _enable_internet(config.GSM_port, logger, config.GSM_ppp_config_file)
         try:
-            response = lfp.upload_bson(image, image_time, config.GSM_thumbnail_upload_server, config)
+            response = lfp.upload_file_as_bson(image, image_time, config.GSM_thumbnail_upload_server, config)
             logger.info('Upload thumbnail to server OK')
             _disable_ppp()
             return
@@ -306,7 +306,7 @@ def _upload_logfile(logger, conf, log):
         _enable_internet(conf.GSM_port, logger, conf.GSM_ppp_config_file)
         try:
             # attempt to send an image to the server
-            response = lfp.upload_bson(log, dt.datetime.utcnow(), conf.GSM_log_upload_server, conf)
+            response = lfp.upload_file_as_bson(log, dt.datetime.utcnow(), conf.GSM_log_upload_server, conf)
             logger.info('upload log to server OK')
 
             # disable_internet(logger)

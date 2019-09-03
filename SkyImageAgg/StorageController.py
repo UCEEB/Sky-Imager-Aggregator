@@ -46,7 +46,7 @@ def run_storage_controller():
             )
 
             try:
-                LibraryForPi.upload_json(image, image_time, config)
+                LibraryForPi.upload_file_as_json(image, image_time, config)
                 logger.info('{} was successfully uploaded to server'.format(file))
 
                 try:

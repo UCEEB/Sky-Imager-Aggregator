@@ -65,7 +65,7 @@ def process_image(scheduler, config, logger):
     success = True
     if len(config.server) > 0:
         try:
-            response = LibraryForPi.upload_json(buffer, image_time, config)
+            response = LibraryForPi.upload_file_as_json(buffer, image_time, config)
         except Exception as e:
             logger.error('Upload to server error: ' + str(e))
             success = False
