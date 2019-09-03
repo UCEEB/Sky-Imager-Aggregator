@@ -49,14 +49,7 @@ class SIABash():
 
         return sun['sunrise'], sun['sunset']
 
-    def gsm_task(self):
-        print('Sync time')
-        gsm_port = self.config.GSM_port
-        gsm = SIAGsm(self.logger)
-        gsm.sync_time(gsm_port)
-        print(dt.datetime.utcnow())
-        self.offline_mode = True
-
+    def _send_yesterday_report(self, gsm):
         yesterday = dt.datetime.utcnow().date() - dt.timedelta(days=1)
         log_name = '{}.log'.format(str(yesterday))
         log_path = os.path.join(self.config.log_path, log_name)
@@ -66,7 +59,7 @@ class SIABash():
             file_data = f.read()
             file_data = gzip.compress(str.encode(file_data))
             f.close()
-            print('Sending log: '+log_path + ' from day: '+ str(yesterday))
+            self.logger.info('Sending log: ' + log_path + ' from day: ' + str(yesterday))
             gsm.upload_logfile(file_data, yesterday)
 
         images_path = os.path.join(self.config.path_storage, yesterday.strftime("%y-%m-%d"))
@@ -76,17 +69,25 @@ class SIABash():
             f = open(first_file_path, "r")
             img = f.read()
             f.close()
-            print('Sending thumbnail: '+first_file_path)
+            self.logger.info('Sending thumbnail: ' + first_file_path)
             gsm.send_thumbnail_file(img, yesterday)
 
+    def _send_SMS_report(self, gsm, gsm_port):
         phone_no = self.config.GSM_phone_no
         free_space = self.sky_imager.get_free_storage_space()
         message = 'SkyImg start, time ' + str(dt.datetime.utcnow()) + ', free space ' + free_space
-        print(message)
-        print('Sending SMS to: '+ phone_no)
+        self.logger.info(message)
         response = gsm.send_SMS(phone_no, message, gsm_port)
-        print('SMS response: '+ str(response))
         gsm.GSM_switch_off(gsm_port)
+
+    def gsm_task(self):
+        gsm_port = self.config.GSM_port
+        gsm = SIAGsm(self.logger)
+        # synchronize time
+        gsm.sync_time(gsm_port)
+        self.offline_mode = True
+        self._send_yesterday_report(gsm)
+        self._send_SMS_report(gsm, gsm_port)
 
     def init_sun_time(self):
 
@@ -103,7 +104,6 @@ class SIABash():
         self.sunrise = SIABash.datetime_from_utc_to_local(self.sunrise)
 
     def single_start(self):
-        print('single start')
         self.init_sun_time()
 
         self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config],
@@ -129,10 +129,10 @@ class SIABash():
 
             if self.config.autonomous_mode:
                 self.logger.info('Sending sms')
-                t = threading.Thread(target = self.gsm_task())
+                t = threading.Thread(target=self.gsm_task())
                 t.start()
             self.new_day = False
-            
+
         print('run_sky_scanner')
         sky_imager.process_image(offline_mode)
         if config.light_sensor:
@@ -149,7 +149,8 @@ class SIABash():
             self.offline_mode = True
         self.single_start()
         self.run_control_scheduler()
-        
 
-bash = SIABash()
-bash.run()
+
+if __name__ == '__main__':
+    bash = SIABash()
+    bash.run()
