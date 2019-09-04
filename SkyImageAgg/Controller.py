@@ -1,6 +1,7 @@
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+import datetime
 import base64
 import hashlib
 import hmac
@@ -9,6 +10,7 @@ import glob
 
 import requests
 import numpy as np
+from astral import Astral, Location
 
 from SkyImageAgg.GSM import Messenger, GPRS
 
@@ -157,7 +159,8 @@ class Controller(Messenger, GPRS):
     def list_files_in_storage(self):
         return glob.iglob(os.path.join(self.storage_path, '*'))
 
-    ########### THIS SHOULD BE DONE IN THE MAIN FILE ################
+    # THIS SHOULD BE DONE IN THE MAIN FILE
+    # todo check function
     def run_storage_controller(self):
         # Check if there are any images in the storage
         if self.list_files_in_storage():
@@ -180,3 +183,82 @@ class Controller(Messenger, GPRS):
 
         else:
             self.logger.info('Storage is empty!')
+
+    # todo check function
+    @staticmethod
+    def get_sunrise_and_sunset_date(cam_latitude, cam_longitude, cam_altitude, date=None):
+        if not date:
+            date = datetime.now(timezone.utc).date()
+
+        astral = Astral()
+        astral.solar_depression = 'civil'
+        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
+
+        try:
+            sun = location.sun(date=date)
+        except Exception:
+            return datetime.combine(date, datetime.time(3, 0, 0, 0, timezone.utc)), \
+                   datetime.combine(date, datetime.time(21, 0, 0, 0, timezone.utc))
+
+        return sun['sunrise'], sun['sunset']
+
+    # todo check function
+    def get_path_to_storage(self):
+        path = self.config.path_storage
+        if self.config.autonomous_mode:
+            if os.access(self.config.GSM_path_storage_usb1, os.W_OK):
+                path = self.config.GSM_path_storage_usb1
+            elif os.access(self.config.GSM_path_storage_usb2, os.W_OK):
+                path = self.config.GSM_path_storage_usb2
+        return path
+
+    # SHOULD BE DONE IN MAIN CLASS
+    # todo check function
+    def save_to_storage(self, img, name, image_time):
+        path = os.path.join(self.get_path_to_storage(), image_time.strftime("%y-%m-%d"))
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        if self.config.autonomous_mode:
+            try:
+                img.tofile(os.path.join(path, name))
+            except Exception as e:
+                self.logger.error('Saving to local storage error : ' + str(e))
+                pass
+            else:
+                self.logger.info('image ' + path + '/' + name + ' saved to storage')
+                pass
+        try:
+            img.tofile(os.path.join(self.config.path_storage, name))
+        except Exception as e:
+            self.logger.error('save to local storage error : ' + str(e))
+            pass
+        else:
+            self.logger.info('image ' + self.config.path_storage + '/' + name + ' saved to storage')
+            pass
+
+    # todo check function
+    def get_free_space_storage(self):
+        path = self.get_path_to_storage()
+        info = os.statvfs(path)
+        free_space = info.f_bsize * info.f_bfree / 1048576
+        return '{}.0f MB'.format(free_space)
+
+    # todo check function
+    def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
+        path = self.get_path_to_storage()
+        try:
+            with open(os.path.join(path, self.config.MODBUS_csv_name), 'a', newline='') as handle:
+                csv_file = csv.writer(handle, delimiter=';', quotechar='\'', quoting=csv.QUOTE_MINIMAL)
+
+                if self.config.MODBUS_log_temperature:
+                    csv_file.writerow([time, irradiance, ext_temperature, cell_temperature])
+                else:
+                    csv_file.writerow([time, irradiance])
+
+        except Exception as e:
+            self.logger.error('csv save to local storage error : ' + str(e))
+        else:
+            self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
+            self.logger.info('irradiance saved ' + str(irradiance))
+
