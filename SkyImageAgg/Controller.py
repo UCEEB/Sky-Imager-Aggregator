@@ -1,22 +1,26 @@
 import os
 import time
-import datetime as dt
+from datetime import datetime
 import base64
 import hashlib
 import hmac
 import json
+import glob
 
 import requests
+import numpy as np
 
 from SkyImageAgg.GSM import Messenger, GPRS
 
 
 class Controller(Messenger, GPRS):
-    def __init__(self, server, camera_id, auth_key):
+    def __init__(self, server, camera_id, auth_key, storage_path, time_format):
         super().__init__()
         self.cam_id = camera_id
         self.key = auth_key
         self.server = server
+        self.storage_path = storage_path
+        self.time_format = time_format
 
     def encrypt_data(self, message):
         return hmac.new(self.key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
@@ -44,11 +48,25 @@ class Controller(Messenger, GPRS):
         }
         return requests.post(url, data=post_data)
 
-    def upload_file_as_json(self, file, date_string):
+    @staticmethod
+    def make_array_from_file(file):
+        return np.fromfile(file, dtype=np.uint8)
+
+    @staticmethod
+    def get_file_timestamp(file):
+        return datetime.fromtimestamp(os.path.getmtime(file))
+
+    def get_file_datetime_as_string(self, file):
+        return self.get_file_timestamp(file).strftime(self.time_format)
+
+    def upload_file_as_json(self, file, convert_to_array=True):
+        if convert_to_array:
+            file = self.make_array_from_file(file)
+
         data = {
             'status': 'ok',
             'id': self.cam_id,
-            'time': date_string.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+            'time': self.get_file_datetime_as_string(file),
             'coding': 'Base64',
             'data': base64.b64encode(file).decode('ascii')
         }
@@ -68,23 +86,24 @@ class Controller(Messenger, GPRS):
 
         return json_response
 
-    def upload_file_as_bson(self, image, date_string):
+    def upload_file_as_bson(self, file):
         data = {
             "status": "ok",
             "id": self.cam_id,
-            "time": date_string.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+            "time": self.get_file_datetime_as_string(file),
             "coding": "none"
         }
 
         json_data = json.dumps(data)
         signature = self.encrypt_data(json_data)
+        url = '{}{}'.format(self.server, signature)
 
-        if isinstance(image, str) or isinstance(image, bytes):
-            files = [('image', image), ('json', json_data)]
+        if isinstance(file, str) or isinstance(file, bytes):
+            files = [('image', file), ('json', json_data)]
         else:
-            files = [('image', str(image)), ('json', json_data)]
+            files = [('image', str(file)), ('json', json_data)]
 
-        response = requests.post(self.server + signature, files=files)
+        response = requests.post(url=url, files=files)
 
         try:
             json_response = json.loads(response.text)
@@ -103,12 +122,12 @@ class Controller(Messenger, GPRS):
             counter += 1
             self.enable_GPRS()
             try:
-                self.upload_file_as_bson(file, dt.datetime.utcnow())
+                self.upload_file_as_bson(file)
                 self.logger.info('Upload thumbnail to server OK')
                 self.disable_ppp()
                 return
             except Exception as e:
-                self.logger.error('Upload thumbnail to server error: ' + str(e))
+                self.logger.error('Upload thumbnail to server error: {}'.format(e))
             if counter > 5:
                 self.logger.error('Upload thumbnail to server error: too many attempts')
                 break
@@ -122,7 +141,7 @@ class Controller(Messenger, GPRS):
             counter += 1
             self.enable_GPRS()
             try:
-                self.upload_file_as_bson(log_file, dt.datetime.utcnow())
+                self.upload_file_as_bson(log_file)
                 self.logger.info('upload log to server OK')
 
                 return
@@ -134,3 +153,30 @@ class Controller(Messenger, GPRS):
                 break
 
         self.logger.debug('end upload log to server')
+
+    def list_files_in_storage(self):
+        return glob.iglob(os.path.join(self.storage_path, '*'))
+
+    ########### THIS SHOULD BE DONE IN THE MAIN FILE ################
+    def run_storage_controller(self):
+        # Check if there are any images in the storage
+        if self.list_files_in_storage():
+            self.logger.info('Storage is not empty!')
+            # iterate over the images in the storage path
+
+            for image in self.list_files_in_storage():
+                try:
+                    self.upload_file_as_json(image)
+                    self.logger.info('{} was successfully uploaded to server'.format(image))
+
+                    try:
+                        os.remove(os.path.join(image))
+
+                    except Exception as e:
+                        self.logger.error('{} could not be deleted due to the following error:\n{}'.format(image, e))
+
+                except Exception as e:
+                    self.logger.error('{} could not be uploaded to server due to the following error:\n{}'.format(image, e))
+
+        else:
+            self.logger.info('Storage is empty!')
