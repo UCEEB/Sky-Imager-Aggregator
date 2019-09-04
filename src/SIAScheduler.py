@@ -80,11 +80,7 @@ class SIABash():
         response = gsm.send_SMS(phone_no, message, gsm_port)
         gsm.GSM_switch_off(gsm_port)
 
-    def gsm_task(self):
-        gsm_port = self.config.GSM_port
-        gsm = SIAGsm(self.logger)
-        # synchronize time
-        gsm.sync_time(gsm_port)
+    def gsm_task(self, gsm, gsm_port):
         self.offline_mode = True
         self._send_yesterday_report(gsm)
         self._send_SMS_report(gsm, gsm_port)
@@ -128,8 +124,12 @@ class SIABash():
             self.logger_object.set_log_to_file_new_day(self.config.log_path)
 
             if self.config.autonomous_mode:
+                gsm_port = self.config.GSM_port
+                gsm = SIAGsm(self.logger)
+                # synchronize time
+                gsm.sync_time(gsm_port)
                 self.logger.info('Sending sms')
-                t = threading.Thread(target=self.gsm_task())
+                t = threading.Thread(target=self.gsm_task, args=(gsm, gsm_port))
                 t.start()
             self.new_day = False
 
