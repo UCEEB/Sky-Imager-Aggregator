@@ -65,16 +65,17 @@ class SIABash():
         images_path = os.path.join(self.config.path_storage, yesterday.strftime("%y-%m-%d"))
 
         if os.path.isdir(images_path):
-            first_file_path=''
+            first_file_name = ''
             try:
-                first_file_path = os.listdir(images_path)[0]
+                first_file_name = os.listdir(images_path)[0]
+                img_path = os.path.join(images_path, first_file_name)
+                f = open(img_path, "r")
             except:
                 return
             else:
-                f = open(first_file_path, "r")
                 img = f.read()
                 f.close()
-                self.logger.info('Sending thumbnail: ' + first_file_path)
+                self.logger.info('Sending thumbnail: ' + first_file_name)
                 gsm.send_thumbnail_file(img, yesterday)
 
     def _send_SMS_report(self, gsm, gsm_port):
@@ -90,7 +91,6 @@ class SIABash():
         self._send_SMS_report(gsm, gsm_port)
         gsm.disable_internet()
         gsm.GSM_switch_off(gsm_port)
-
 
     def init_sun_time(self):
 
@@ -161,4 +161,3 @@ class SIABash():
 if __name__ == '__main__':
     bash = SIABash()
     bash.run()
-
