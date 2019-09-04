@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import glob
+import csv
 
 import requests
 import numpy as np
