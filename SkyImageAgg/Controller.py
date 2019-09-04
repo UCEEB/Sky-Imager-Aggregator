@@ -3,20 +3,18 @@ import time
 from datetime import datetime, timezone
 import datetime
 import base64
-import hashlib
-import hmac
 import json
 import glob
 import csv
 
 import requests
-import numpy as np
 from astral import Astral, Location
 
 from SkyImageAgg.GSM import Messenger, GPRS
+from SkyImageAgg.Utils import Utils
 
 
-class Controller(Messenger, GPRS):
+class Controller(Utils, Messenger, GPRS):
     def __init__(self, server, camera_id, auth_key, storage_path, time_format):
         super().__init__()
         self.cam_id = camera_id
@@ -24,9 +22,6 @@ class Controller(Messenger, GPRS):
         self.server = server
         self.storage_path = storage_path
         self.time_format = time_format
-
-    def encrypt_data(self, message):
-        return hmac.new(self.key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
 
     def sync_time(self):
         if not self.enable_GPRS():
@@ -44,24 +39,6 @@ class Controller(Messenger, GPRS):
                 self.logger.error('Sync time error')
                 return False
 
-    @staticmethod
-    def send_post_request(url, data):
-        post_data = {
-            'data': data
-        }
-        return requests.post(url, data=post_data)
-
-    @staticmethod
-    def make_array_from_file(file):
-        return np.fromfile(file, dtype=np.uint8)
-
-    @staticmethod
-    def get_file_timestamp(file):
-        return datetime.fromtimestamp(os.path.getmtime(file))
-
-    def get_file_datetime_as_string(self, file):
-        return self.get_file_timestamp(file).strftime(self.time_format)
-
     def upload_file_as_json(self, file, convert_to_array=True):
         if convert_to_array:
             file = self.make_array_from_file(file)
@@ -69,13 +46,13 @@ class Controller(Messenger, GPRS):
         data = {
             'status': 'ok',
             'id': self.cam_id,
-            'time': self.get_file_datetime_as_string(file),
+            'time': self.get_file_datetime_as_string(file, self.time_format),
             'coding': 'Base64',
             'data': base64.b64encode(file).decode('ascii')
         }
 
         json_data = json.dumps(data)
-        signature = self.encrypt_data(json_data)
+        signature = self.encrypt_data(self.key, json_data)
         url = '{}{}'.format(self.server, signature)
         response = self.send_post_request(url, json_data)
 
@@ -93,12 +70,12 @@ class Controller(Messenger, GPRS):
         data = {
             "status": "ok",
             "id": self.cam_id,
-            "time": self.get_file_datetime_as_string(file),
+            "time": self.get_file_datetime_as_string(file, self.time_format),
             "coding": "none"
         }
 
         json_data = json.dumps(data)
-        signature = self.encrypt_data(json_data)
+        signature = self.encrypt_data(self.key, json_data)
         url = '{}{}'.format(self.server, signature)
 
         if isinstance(file, str) or isinstance(file, bytes):
@@ -157,18 +134,15 @@ class Controller(Messenger, GPRS):
 
         self.logger.debug('end upload log to server')
 
-    def list_files_in_storage(self):
-        return glob.iglob(os.path.join(self.storage_path, '*'))
-
     # THIS SHOULD BE DONE IN THE MAIN FILE
     # todo check function
     def run_storage_controller(self):
         # Check if there are any images in the storage
-        if self.list_files_in_storage():
+        if self.list_files_in_storage(self.storage_path):
             self.logger.info('Storage is not empty!')
             # iterate over the images in the storage path
 
-            for image in self.list_files_in_storage():
+            for image in self.list_files_in_storage(self.storage_path):
                 try:
                     self.upload_file_as_json(image)
                     self.logger.info('{} was successfully uploaded to server'.format(image))
@@ -180,7 +154,8 @@ class Controller(Messenger, GPRS):
                         self.logger.error('{} could not be deleted due to the following error:\n{}'.format(image, e))
 
                 except Exception as e:
-                    self.logger.error('{} could not be uploaded to server due to the following error:\n{}'.format(image, e))
+                    self.logger.error(
+                        '{} could not be uploaded to server due to the following error:\n{}'.format(image, e))
 
         else:
             self.logger.info('Storage is empty!')
@@ -204,6 +179,7 @@ class Controller(Messenger, GPRS):
         return sun['sunrise'], sun['sunset']
 
     # todo check function
+    # Should be moved to main (no config is called here)
     def get_path_to_storage(self):
         path = self.config.path_storage
         if self.config.autonomous_mode:
@@ -239,13 +215,6 @@ class Controller(Messenger, GPRS):
             pass
 
     # todo check function
-    def get_free_space_storage(self):
-        path = self.get_path_to_storage()
-        info = os.statvfs(path)
-        free_space = info.f_bsize * info.f_bfree / 1048576
-        return '{}.0f MB'.format(free_space)
-
-    # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
         path = self.get_path_to_storage()
         try:
@@ -262,4 +231,3 @@ class Controller(Messenger, GPRS):
         else:
             self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
             self.logger.info('irradiance saved ' + str(irradiance))
-
