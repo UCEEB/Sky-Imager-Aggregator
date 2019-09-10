@@ -84,8 +84,10 @@ class SIABash():
         message = 'SkyImg start, time ' + str(dt.datetime.utcnow()) + ', free space ' + free_space
         self.logger.info(message)
         response = gsm.send_SMS(phone_no, message, gsm_port)
+        print('Sms response: '+ str(response))
 
     def gsm_task(self, gsm, gsm_port):
+        print('GSM task')
         self.offline_mode = True
         self._send_yesterday_report(gsm)
         self._send_SMS_report(gsm, gsm_port)
@@ -114,15 +116,9 @@ class SIABash():
                 # synchronize time
                 gsm.sync_time(gsm_port)
 
-                # first run of program
-                if self.sunset is None:
-                    self.logger.info('Sending sms')
-                    t = threading.Thread(target=self.gsm_task, args=(gsm, gsm_port))
-                    t.start()
-
         self.init_sun_time()
 
-        self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config],
+        self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config, gsm],
                                  second='*/' + str(self.config.cap_mod),
                                  start_date=self.sunrise,
                                  end_date=self.sunset)
@@ -133,16 +129,19 @@ class SIABash():
     def control_job(self):
         jobs = self.sky_scanner.get_jobs()
         today = dt.datetime.utcnow()
-        if len(jobs) == 0 or today.day > self.sunset.day:
+        sunset_day = 0
+        if self.sunset is not None:
+            sunset_day = self.sunset.day
+        if len(jobs) == 0 or today.day > sunset_day:
             print('starting new day')
             self.sky_scanner.remove_all_jobs()
             self.new_day = True
             self.single_start()
 
-    def run_sky_scanner(self, sky_imager, offline_mode, config):
+    def run_sky_scanner(self, sky_imager, offline_mode, config, gsm):
         if self.new_day:
             self.logger.info('Sending sms')
-            t = threading.Thread(target=self.gsm_task, args=(gsm, gsm_port))
+            t = threading.Thread(target=self.gsm_task, args=(gsm, self.config.GSM_port))
             t.start()
             self.new_day = False
 
