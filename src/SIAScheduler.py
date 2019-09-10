@@ -103,29 +103,7 @@ class SIABash():
         self.sunrise -= dt.timedelta(minutes=self.config.added_time)
         self.sunset += dt.timedelta(minutes=self.config.added_time)
 
-        self.sunset = SIABash.datetime_from_utc_to_local(self.sunset)
-        self.sunrise = SIABash.datetime_from_utc_to_local(self.sunrise)
-
     def single_start(self):
-        self.init_sun_time()
-
-        self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config],
-                                 second='*/' + str(self.config.cap_mod),
-                                 start_date=self.sunrise,
-                                 end_date=self.sunset, id='sky-scanner')
-
-        if not self.sky_scanner.running:
-            self.sky_scanner.start()
-
-    def control_job(self, skyscanner_scheduler):
-        jobs = skyscanner_scheduler.get_jobs()
-        if len(jobs) == 0:
-            print('starting new day')
-            self.new_day = True
-            self.single_start()
-
-    def run_sky_scanner(self, sky_imager, offline_mode, config):
-
         if self.new_day:
             self.logger.info('New day: setting new logger')
             self.logger_object.set_log_to_file_new_day(self.config.log_path)
@@ -135,9 +113,37 @@ class SIABash():
                 gsm = SIAGsm(self.logger)
                 # synchronize time
                 gsm.sync_time(gsm_port)
-                self.logger.info('Sending sms')
-                t = threading.Thread(target=self.gsm_task, args=(gsm, gsm_port))
-                t.start()
+
+                # first run of program
+                if self.sunset is None:
+                    self.logger.info('Sending sms')
+                    t = threading.Thread(target=self.gsm_task, args=(gsm, gsm_port))
+                    t.start()
+
+        self.init_sun_time()
+
+        self.sky_scanner.add_job(self.run_sky_scanner, 'cron', [self.sky_imager, self.offline_mode, self.config],
+                                 second='*/' + str(self.config.cap_mod),
+                                 start_date=self.sunrise,
+                                 end_date=self.sunset)
+
+        if not self.sky_scanner.running:
+            self.sky_scanner.start()
+
+    def control_job(self):
+        jobs = self.sky_scanner.get_jobs()
+        today = dt.datetime.utcnow()
+        if len(jobs) == 0 or today.day > self.sunset.day:
+            print('starting new day')
+            self.sky_scanner.remove_all_jobs()
+            self.new_day = True
+            self.single_start()
+
+    def run_sky_scanner(self, sky_imager, offline_mode, config):
+        if self.new_day:
+            self.logger.info('Sending sms')
+            t = threading.Thread(target=self.gsm_task, args=(gsm, gsm_port))
+            t.start()
             self.new_day = False
 
         print('run_sky_scanner')
@@ -147,7 +153,7 @@ class SIABash():
 
     def run_control_scheduler(self):
         main_scheduler = BlockingScheduler()
-        main_scheduler.add_job(self.control_job, 'cron', [self.sky_scanner],
+        main_scheduler.add_job(self.control_job, 'cron',
                                minute='*/30')
         main_scheduler.start()
 
