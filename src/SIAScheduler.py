@@ -25,6 +25,7 @@ class SIABash():
         self.sunset = None
         self.new_day = True
         self.sky_scanner = BackgroundScheduler()
+        self.time_sync = False
 
     @staticmethod
     def datetime_from_utc_to_local(utc_datetime):
@@ -106,6 +107,7 @@ class SIABash():
         self.sunset += dt.timedelta(minutes=self.config.added_time)
 
     def single_start(self):
+        gsm = None
         if self.new_day:
             self.logger.info('New day: setting new logger')
             self.logger_object.set_log_to_file_new_day(self.config.log_path)
@@ -113,8 +115,9 @@ class SIABash():
             if self.config.autonomous_mode:
                 gsm_port = self.config.GSM_port
                 gsm = SIAGsm(self.logger)
-                # synchronize time
-                gsm.sync_time(gsm_port)
+                if not self.time_sync:
+                    # synchronize time
+                    self.time_sync = gsm.sync_time(gsm_port)
 
         self.init_sun_time()
 
@@ -139,7 +142,7 @@ class SIABash():
             self.single_start()
 
     def run_sky_scanner(self, sky_imager, offline_mode, config, gsm):
-        if self.new_day:
+        if self.new_day and gsm is not None:
             self.logger.info('Sending sms')
             t = threading.Thread(target=self.gsm_task, args=(gsm, self.config.GSM_port))
             t.start()
