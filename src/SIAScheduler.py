@@ -13,7 +13,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 
 
-class SIABash():
+class SIABash:
 
     def __init__(self):
         self.logger_object = Logger()
