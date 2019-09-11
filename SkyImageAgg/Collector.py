@@ -8,17 +8,14 @@ class Camera:
         if self.integrated:
             self.cam = PiCamera()
 
-    def set_resolution(self, width, height):
-        self.cam.resolution = (width, height)
-
     def start_preview(self):
         self.cam.start_preview()
 
     def stop_preview(self):
         self.cam.stop_preview()
 
-    # TO DO
-    def snap(self, image):
+    # todo check
+    def cap_pic(self, image):
         self.cam.capture(image)
 
     def cap_video(self):
@@ -28,4 +25,3 @@ class Camera:
 class IrrSensor:
     def __init__(self):
         pass
-
