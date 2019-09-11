@@ -1,3 +1,4 @@
+import cv2
 from astral import Astral, Location
 import datetime as dt
 import time
@@ -70,14 +71,15 @@ class SIABash:
             try:
                 first_file_name = os.listdir(images_path)[0]
                 img_path = os.path.join(images_path, first_file_name)
-                f = open(img_path, "r")
+                img=cv2.imread(img_path)
+                res = cv2.resize(img, dsize=(self.config.GSM_thumbnail_size, self.config.GSM_thumbnail_size),
+                                 interpolation=cv2.INTER_NEAREST)
+                is_success, buffer = cv2.imencode(".jpg", res, [int(cv2.IMWRITE_JPEG_QUALITY), self.config.image_quality])
             except:
                 return
             else:
-                img = f.read()
-                f.close()
                 self.logger.info('Sending thumbnail: ' + first_file_name)
-                gsm.send_thumbnail_file(img, yesterday)
+                gsm.send_thumbnail_file(buffer, yesterday)
 
     def _send_SMS_report(self, gsm, gsm_port):
         phone_no = self.config.GSM_phone_no
