@@ -7,4 +7,7 @@ It is a software for capturing images from a panoramatic IP camera. Images are c
 Sky Imager is a part of a system for cloud tracking. System generally consist of a Sky Imager and computation server. Sky Imager is composed typically from panoramatic IP camera and Raspberry PI. The Sky Imager Aggregator is software installed on Raspberry. The task of aggregator is to capture images from camera and send it to computation server for further processing.
 
 ## How to use
-Software consists of Python script and systemd settings. Linux Systemd utility ensures software to run permanently (reset, fail) during daytime. For details see doc folder for documentation. 
+Software consists of Python script and systemd settings. Linux Systemd utility ensures software to run permanently (reset, fail) during daytime. For details see doc folder for documentation.
+
+## Architecture
+![Software_arch](https://github.com/UCEEB/Sky-Imager-Aggregator/blob/azim/Sky_Scanner_Diagram.png)
