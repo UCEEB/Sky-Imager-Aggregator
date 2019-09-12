@@ -127,7 +127,7 @@ class SIAGsm:
         if isinstance(image, str) or isinstance(image, bytes):
             files = [('image', image), ('json', jsondata)]
         else:
-            files = [('image', str(image)), ('json', jsondata)]
+            files = [('image', image.tostring()), ('json', jsondata)]
 
         response = requests.post(server + signature, files=files)
         try:
@@ -251,7 +251,7 @@ class SIAGsm:
                 self.logger.debug('GSM switch error')
 
     def _get_GSM_state(self, port):
-        self.logger.debug('Getting modem state')
+        self.logger.debug('Getting modem state: '+ str(port))
         self._disable_ppp()
         time.sleep(1)
         try:

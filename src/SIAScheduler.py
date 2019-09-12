@@ -71,15 +71,16 @@ class SIABash:
             try:
                 first_file_name = os.listdir(images_path)[0]
                 img_path = os.path.join(images_path, first_file_name)
-                img=cv2.imread(img_path)
+                img = cv2.imread(img_path)
                 res = cv2.resize(img, dsize=(self.config.GSM_thumbnail_size, self.config.GSM_thumbnail_size),
                                  interpolation=cv2.INTER_NEAREST)
                 is_success, buffer = cv2.imencode(".jpg", res, [int(cv2.IMWRITE_JPEG_QUALITY), self.config.image_quality])
-            except:
+            except Exception as e:
+                print('Sending thumbnail error: '+ str(e))
                 return
             else:
                 self.logger.info('Sending thumbnail: ' + first_file_name)
-                gsm.send_thumbnail_file(buffer, yesterday)
+                gsm.send_thumbnail_file(buffer, dt.datetime.now())
 
     def _send_SMS_report(self, gsm, gsm_port):
         phone_no = self.config.GSM_phone_no
@@ -146,7 +147,7 @@ class SIABash:
     def run_sky_scanner(self, sky_imager, offline_mode, config, gsm):
         if self.new_day and gsm is not None:
             self.logger.info('Sending sms')
-            t = threading.Thread(target=self.gsm_task, args=(gsm, self.config.GSM_port))
+            t = threading.Thread(target=self.gsm_task, args=(gsm, config.GSM_port))
             t.start()
             self.new_day = False
 
