@@ -40,12 +40,6 @@ class Utils:
         return glob.iglob(os.path.join(path, '*'))
 
     @staticmethod
-    def get_free_space(path):
-        info = os.statvfs(path)
-        free_space = info.f_bsize * info.f_bfree / 1048576
-        return '{}.0f MB'.format(free_space)
-
-    @staticmethod
     def get_sunrise_and_sunset_time(cam_latitude, cam_longitude, cam_altitude, date=None):
         if not date:
             date = datetime.now(timezone.utc).date()
