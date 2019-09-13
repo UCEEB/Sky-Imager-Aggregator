@@ -148,6 +148,10 @@ class Controller(Utils, Messenger, GPRS):
         else:
             return False
 
+    def calc_avail_free_space(self):
+        info = os.statvfs(self.storage_path)
+        return info.f_bsize * info.f_bfree / 1048576
+
     # SHOULD BE DONE IN MAIN CLASS
     # todo check function
     def save_to_storage(self, img, name, image_time):
