@@ -217,6 +217,30 @@ def run_storage_controller(self):
     else:
         self.logger.info('Storage is empty!')
 
+# todo check function
+def save_to_storage(self, img, name, image_time):
+    path = os.path.join(self.get_path_to_storage(), image_time.strftime("%y-%m-%d"))
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    if self.config.autonomous_mode:
+        try:
+            img.tofile(os.path.join(path, name))
+        except Exception as e:
+            self.logger.error('Saving to local storage error : ' + str(e))
+            pass
+        else:
+            self.logger.info('image ' + path + '/' + name + ' saved to storage')
+            pass
+    try:
+        img.tofile(os.path.join(self.config.path_storage, name))
+    except Exception as e:
+        self.logger.error('save to local storage error : ' + str(e))
+        pass
+    else:
+        self.logger.info('image ' + self.config.path_storage + '/' + name + ' saved to storage')
+        pass
+
 if __name__ == '__main__':
     print('Starting SkyImager')
     start()
