@@ -142,32 +142,11 @@ class Controller(Utils, Messenger, GPRS):
 
         self.logger.debug('end upload log to server')
 
-    # THIS SHOULD BE DONE IN THE MAIN FILE
-    # todo check function
-    def run_storage_controller(self):
-        # Check if there are any images in the storage
-        if self.list_files_in_storage(self.storage_path):
-            self.logger.info('Storage is not empty!')
-            # iterate over the images in the storage path
-
-            for image in self.list_files_in_storage(self.storage_path):
-                try:
-                    self.upload_file_as_json(image)
-                    self.logger.info('{} was successfully uploaded to server'.format(image))
-
-                    try:
-                        os.remove(os.path.join(image))
-
-                    except Exception as e:
-                        self.logger.error('{} could not be deleted due to the following error:\n{}'.format(image, e))
-
-                except Exception as e:
-
-                    self.logger.error(
-                        '{} could not be uploaded to server due to the following error:\n{}'.format(image, e))
-
+    def isStorageEmpty(self):
+        if not self.list_files(self.storage_path):
+            return True
         else:
-            self.logger.info('Storage is empty!')
+            return False
 
     # SHOULD BE DONE IN MAIN CLASS
     # todo check function
