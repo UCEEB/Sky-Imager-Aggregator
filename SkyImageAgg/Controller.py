@@ -1,14 +1,10 @@
 import os
 import time
-from datetime import datetime, timezone
-import datetime
 import base64
 import json
-import glob
 import csv
 
 import requests
-from astral import Astral, Location
 
 from SkyImageAgg.GSM import Messenger, GPRS
 from SkyImageAgg.Utils import Utils
@@ -41,7 +37,7 @@ class Controller(Utils, Messenger, GPRS):
 
     def upload_file_as_json(self, file, convert_to_array=True):
         if convert_to_array:
-            file = self.make_array_from_file(file)
+            file = self.make_array_from_image(file)
 
         data = {
             'status': 'ok',
@@ -160,23 +156,8 @@ class Controller(Utils, Messenger, GPRS):
         else:
             self.logger.info('Storage is empty!')
 
-    # todo check function
-    @staticmethod
-    def get_sunrise_and_sunset_date(cam_latitude, cam_longitude, cam_altitude, date=None):
-        if not date:
-            date = datetime.now(timezone.utc).date()
+    # todo check function, move to utils
 
-        astral = Astral()
-        astral.solar_depression = 'civil'
-        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
-
-        try:
-            sun = location.sun(date=date)
-        except Exception:
-            return datetime.combine(date, datetime.time(3, 0, 0, 0, timezone.utc)), \
-                   datetime.combine(date, datetime.time(21, 0, 0, 0, timezone.utc))
-
-        return sun['sunrise'], sun['sunset']
 
     # todo check function
     # Should be moved to main (no config is called here)

@@ -1,12 +1,15 @@
 import os
-import hashlib
 import hmac
-import requests
-import numpy as np
-from datetime import datetime
 import math
 import time
 import glob
+import datetime
+import hashlib
+from datetime import datetime, timezone
+
+import requests
+import numpy as np
+from astral import Astral, Location
 
 
 class Utils:
@@ -22,7 +25,7 @@ class Utils:
         return requests.post(url, data=post_data)
 
     @staticmethod
-    def make_array_from_file(file):
+    def make_array_from_image(file):
         return np.fromfile(file, dtype=np.uint8)
 
     @staticmethod
@@ -43,7 +46,25 @@ class Utils:
         return '{}.0f MB'.format(free_space)
 
     @staticmethod
+    def get_sunrise_and_sunset_time(cam_latitude, cam_longitude, cam_altitude, date=None):
+        if not date:
+            date = datetime.now(timezone.utc).date()
+
+        astral = Astral()
+        astral.solar_depression = 'civil'
+        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
+
+        try:
+            sun = location.sun(date=date)
+        except Exception:
+            return datetime.combine(date, datetime.time(3, 0, 0, 0, timezone.utc)), \
+                   datetime.combine(date, datetime.time(21, 0, 0, 0, timezone.utc))
+
+        return sun['sunrise'], sun['sunset']
+
+    @staticmethod
     def retry_on_failure(attempts, delay=3, back_off=1):
+        # Taken from https://wiki.python.org/moin/PythonDecoratorLibrary#Retry
         if back_off < 1:
             raise ValueError("back_off must be greater than or equal to 1")
 
