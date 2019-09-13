@@ -97,7 +97,6 @@ class Modem(Logger):
         return False
 
 
-#######################################################################################################################
 class Messenger(Modem):
     def __init__(self):
         super().__init__()
@@ -137,7 +136,6 @@ class Messenger(Modem):
         return outbox
 
 
-#######################################################################################################################
 class GPRS(Modem):
     def __init__(self, ppp_config_file):
         super().__init__()
