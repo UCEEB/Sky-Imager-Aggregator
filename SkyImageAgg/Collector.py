@@ -5,11 +5,9 @@ from picamera import PiCamera
 import minimalmodbus
 
 
-class Camera:
-    def __init__(self, integrated=True):
-        self.integrated = integrated
-        if self.integrated:
-            self.cam = PiCamera()
+class RPiCam:
+    def __init__(self):
+        self.cam = PiCamera()
 
     def start_preview(self):
         self.cam.start_preview()
@@ -59,7 +57,7 @@ class IrrSensor:
         return irr, ext_temp, cell_temp
 
     @staticmethod
-    def _restart_USB2Serial():
+    def restart_USB2Serial():
         time.sleep(0.5)
         os.system('sudo modprobe -r pl2303')
         time.sleep(0.2)
