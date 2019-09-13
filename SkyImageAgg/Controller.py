@@ -11,13 +11,25 @@ from SkyImageAgg.Utils import Utils
 
 
 class Controller(Utils, Messenger, GPRS):
-    def __init__(self, server, camera_id, auth_key, storage_path, time_format):
+    def __init__(
+            self,
+            server,
+            camera_id,
+            auth_key,
+            storage_path,
+            ext_storage_path,
+            time_format,
+            autonomous_mode=False
+    ):
         super().__init__()
         self.cam_id = camera_id
         self.key = auth_key
         self.server = server
-        self.storage_path = storage_path
         self.time_format = time_format
+        if autonomous_mode:
+            self.storage_path = ext_storage_path
+        else:
+            self.storage_path = storage_path
 
     def sync_time(self):
         if not self.enable_GPRS():
@@ -150,25 +162,12 @@ class Controller(Utils, Messenger, GPRS):
                         self.logger.error('{} could not be deleted due to the following error:\n{}'.format(image, e))
 
                 except Exception as e:
+
                     self.logger.error(
                         '{} could not be uploaded to server due to the following error:\n{}'.format(image, e))
 
         else:
             self.logger.info('Storage is empty!')
-
-    # todo check function, move to utils
-
-
-    # todo check function
-    # Should be moved to main (no config is called here)
-    def get_path_to_storage(self):
-        path = self.config.path_storage
-        if self.config.autonomous_mode:
-            if os.access(self.config.GSM_path_storage_usb1, os.W_OK):
-                path = self.config.GSM_path_storage_usb1
-            elif os.access(self.config.GSM_path_storage_usb2, os.W_OK):
-                path = self.config.GSM_path_storage_usb2
-        return path
 
     # SHOULD BE DONE IN MAIN CLASS
     # todo check function
