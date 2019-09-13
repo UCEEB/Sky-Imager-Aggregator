@@ -1,3 +1,6 @@
+import os
+import time
+
 from picamera import PiCamera
 import minimalmodbus
 
@@ -45,7 +48,6 @@ class IrrSensor:
 
     def get_data(self):
         self.open_serial()
-
         try:
             irr = self.sensor.read_register(0, 1, 4, False)
             ext_temp = self.sensor.read_register(8, 1, 4, True)
@@ -53,6 +55,15 @@ class IrrSensor:
         except Exception as e:
             self.sensor.serial.close()
             raise Exception(e)
-
         self.sensor.serial.close()
         return irr, ext_temp, cell_temp
+
+    @staticmethod
+    def _restart_USB2Serial():
+        time.sleep(0.5)
+        os.system('sudo modprobe -r pl2303')
+        time.sleep(0.2)
+        os.system('sudo modprobe -r usbserial')
+        time.sleep(0.2)
+        os.system('sudo modprobe pl2303')
+        time.sleep(0.5)

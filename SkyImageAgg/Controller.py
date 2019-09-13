@@ -154,7 +154,6 @@ class Controller(Utils, Messenger, GPRS):
 
     # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
-        path = self.get_path_to_storage()
         try:
             with open(os.path.join(path, self.config.MODBUS_csv_name), 'a', newline='') as handle:
                 csv_file = csv.writer(handle, delimiter=';', quotechar='\'', quoting=csv.QUOTE_MINIMAL)
