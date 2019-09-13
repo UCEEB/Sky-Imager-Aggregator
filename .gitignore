@@ -5,3 +5,4 @@ src/.vs/
 src/.mypy_cache/
 src/__pycache__/
 src/src.pyproj
+SkyImageAgg/test_tbd.py
