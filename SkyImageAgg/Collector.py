@@ -1,5 +1,5 @@
 from picamera import PiCamera
-import time
+import minimalmodbus
 
 
 class Camera:
@@ -23,5 +23,36 @@ class Camera:
 
 
 class IrrSensor:
-    def __init__(self):
-        pass
+    def __init__(self, port, address, baudrate, bytesize, parity, stopbits):
+        self.sensor = minimalmodbus.Instrument(port, address)
+        self.baudrate = baudrate
+        self.bytesize = bytesize
+        self.parity = parity
+        self.stopbits = stopbits
+
+    def setup(self):
+        self.sensor.serial.baudrate = self.baudrate
+        self.sensor.serial.bytesize = self.bytesize
+        self.sensor.serial.parity = self.parity
+        self.sensor.serial.stopbits = self.stopbits
+        self.sensor.serial.rtscts = False
+        self.sensor.serial.dsrdtr = True
+        self.sensor.serial.timeout = 0.1
+
+    def open_serial(self):
+        if not self.sensor.serial.isOpen():
+            self.sensor.serial.open()
+
+    def get_data(self):
+        self.open_serial()
+
+        try:
+            irr = self.sensor.read_register(0, 1, 4, False)
+            ext_temp = self.sensor.read_register(8, 1, 4, True)
+            cell_temp = self.sensor.read_register(7, 1, 4, True)
+        except Exception as e:
+            self.sensor.serial.close()
+            raise Exception(e)
+
+        self.sensor.serial.close()
+        return irr, ext_temp, cell_temp
