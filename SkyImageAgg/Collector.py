@@ -23,19 +23,18 @@ class RPiCam:
         pass
 
 
+class IPCam:
+    def __init__(self):
+        pass
+
+
 class IrrSensor:
     def __init__(self, port, address, baudrate, bytesize, parity, stopbits):
         self.sensor = minimalmodbus.Instrument(port, address)
-        self.baudrate = baudrate
-        self.bytesize = bytesize
-        self.parity = parity
-        self.stopbits = stopbits
-
-    def setup(self):
-        self.sensor.serial.baudrate = self.baudrate
-        self.sensor.serial.bytesize = self.bytesize
-        self.sensor.serial.parity = self.parity
-        self.sensor.serial.stopbits = self.stopbits
+        self.sensor.serial.baudrate = baudrate
+        self.sensor.serial.bytesize = bytesize
+        self.sensor.serial.parity = parity
+        self.sensor.serial.stopbits = stopbits
         self.sensor.serial.rtscts = False
         self.sensor.serial.dsrdtr = True
         self.sensor.serial.timeout = 0.1
