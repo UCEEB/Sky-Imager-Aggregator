@@ -95,13 +95,13 @@ def process_image(scheduler, config, logger):
 
 
 def add_image_job(scheduler, config, logger, date=dt.datetime.now(dt.timezone.utc).date()):
-    sunrise, sunset = LibraryForPi.get_sunrise_and_sunset_date(config.camera_latitude,
+    sunrise, sunset = LibraryForPi.get_sunrise_and_sunset_time(config.camera_latitude,
                                                                config.camera_longitude,
                                                                config.camera_altitude,
                                                                date)
     if dt.datetime.now(dt.timezone.utc) > sunset:
         date = dt.date.today() + dt.timedelta(days=1)
-        sunrise, sunset = LibraryForPi.get_sunrise_and_sunset_date(config.camera_latitude,
+        sunrise, sunset = LibraryForPi.get_sunrise_and_sunset_time(config.camera_latitude,
                                                                    config.camera_longitude,
                                                                    config.camera_altitude,
                                                                    date)
@@ -191,6 +191,31 @@ def start():
     add_image_job(main_scheduler, config, logger)
     main_scheduler.start()
 
+# todo check function
+def run_storage_controller(self):
+    # Check if there are any images in the storage
+    if self.list_files(self.storage_path):
+        self.logger.info('Storage is not empty!')
+        # iterate over the images in the storage path
+
+        for image in self.list_files(self.storage_path):
+            try:
+                self.upload_file_as_json(image)
+                self.logger.info('{} was successfully uploaded to server'.format(image))
+
+                try:
+                    os.remove(os.path.join(image))
+
+                except Exception as e:
+                    self.logger.error('{} could not be deleted due to the following error:\n{}'.format(image, e))
+
+            except Exception as e:
+
+                self.logger.error(
+                    '{} could not be uploaded to server due to the following error:\n{}'.format(image, e))
+
+    else:
+        self.logger.info('Storage is empty!')
 
 if __name__ == '__main__':
     print('Starting SkyImager')
