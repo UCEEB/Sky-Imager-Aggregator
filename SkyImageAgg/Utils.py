@@ -36,11 +36,11 @@ class Utils:
         return self.get_file_timestamp(file).strftime(datetime_format)
 
     @staticmethod
-    def list_files_in_storage(path):
+    def list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
     @staticmethod
-    def get_free_space_storage(path):
+    def get_free_space(path):
         info = os.statvfs(path)
         free_space = info.f_bsize * info.f_bfree / 1048576
         return '{}.0f MB'.format(free_space)
