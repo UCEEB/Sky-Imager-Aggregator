@@ -35,5 +35,5 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     packages=find_packages(exclude=['docs', 'tests']),
-    install_requires=['requests', 'opencv-python', 'numpy', 'astral'],
+    install_requires=['requests', 'opencv-python', 'numpy', 'astral', 'picamera', 'minimalmodbus', 'apscheduler'],
 )
