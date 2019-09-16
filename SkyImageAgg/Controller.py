@@ -1,16 +1,20 @@
 import os
-import time
 import base64
 import json
+import hmac
 import csv
+import hashlib
+import glob
+from datetime import datetime
 
 import requests
+import numpy as np
 
 from SkyImageAgg.GSM import Messenger, GPRS
 from SkyImageAgg.Utils import Utils
 
 
-class Controller(Utils, Messenger, GPRS):
+class Uploader:
     def __init__(
             self,
             server,
@@ -31,38 +35,48 @@ class Controller(Utils, Messenger, GPRS):
         else:
             self.storage_path = storage_path
 
-    def sync_time(self):
-        if not self.enable_GPRS():
-            return False
-        counter = 0
-        while True:
-            self.logger.debug('Sync time')
-            if os.system('sudo ntpdate -u tik.cesnet.cz') == 0:
-                self.logger.info('Sync time OK')
-                return True
-            else:
-                counter += 1
-                time.sleep(1)
-            if counter > 10:
-                self.logger.error('Sync time error')
-                return False
+    @staticmethod
+    def _encrypt_data(key, message):
+        return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
+
+    @staticmethod
+    def _send_post_request(url, data):
+        post_data = {
+            'data': data
+        }
+        return requests.post(url, data=post_data)
+
+    @staticmethod
+    def _make_array_from_image(file):
+        return np.fromfile(file, dtype=np.uint8)
+
+    @staticmethod
+    def _get_file_timestamp(file):
+        return datetime.fromtimestamp(os.path.getmtime(file))
+
+    def _get_file_datetime_as_string(self, file, datetime_format):
+        return self._get_file_timestamp(file).strftime(datetime_format)
+
+    @staticmethod
+    def _list_files(path):
+        return glob.iglob(os.path.join(path, '*'))
 
     def upload_file_as_json(self, file, convert_to_array=True):
         if convert_to_array:
-            file = self.make_array_from_image(file)
+            file = self._make_array_from_image(file)
 
         data = {
             'status': 'ok',
             'id': self.cam_id,
-            'time': self.get_file_datetime_as_string(file, self.time_format),
+            'time': self._get_file_datetime_as_string(file, self.time_format),
             'coding': 'Base64',
             'data': base64.b64encode(file).decode('ascii')
         }
 
         json_data = json.dumps(data)
-        signature = self.encrypt_data(self.key, json_data)
+        signature = self._encrypt_data(self.key, json_data)
         url = '{}{}'.format(self.server, signature)
-        response = self.send_post_request(url, json_data)
+        response = self._send_post_request(url, json_data)
 
         try:
             json_response = json.loads(response.text)
@@ -78,12 +92,12 @@ class Controller(Utils, Messenger, GPRS):
         data = {
             "status": "ok",
             "id": self.cam_id,
-            "time": self.get_file_datetime_as_string(file, self.time_format),
+            "time": self._get_file_datetime_as_string(file, self.time_format),
             "coding": "none"
         }
 
         json_data = json.dumps(data)
-        signature = self.encrypt_data(self.key, json_data)
+        signature = self._encrypt_data(self.key, json_data)
         url = '{}{}'.format(self.server, signature)
 
         if isinstance(file, str) or isinstance(file, bytes):
@@ -143,12 +157,12 @@ class Controller(Utils, Messenger, GPRS):
         self.logger.debug('end upload log to server')
 
     def isStorageEmpty(self):
-        if not self.list_files(self.storage_path):
+        if not self._list_files(self.storage_path):
             return True
         else:
             return False
 
-    def calc_avail_free_space(self):
+    def get_free_space(self):
         info = os.statvfs(self.storage_path)
         return info.f_bsize * info.f_bfree / 1048576
 
@@ -168,3 +182,13 @@ class Controller(Utils, Messenger, GPRS):
         else:
             self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
             self.logger.info('irradiance saved ' + str(irradiance))
+
+
+class Scheduler:
+    def __init__(self):
+        pass
+
+    def sync_time(self):
+        if os.system('sudo ntpdate -u tik.cesnet.cz') == 0:
+            self.logger.info('Sync time OK')
+            return True

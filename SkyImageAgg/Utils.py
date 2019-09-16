@@ -1,43 +1,17 @@
-import os
-import hmac
+
 import math
 import time
-import glob
+
 import datetime
-import hashlib
+
 from datetime import datetime, timezone
 
-import requests
-import numpy as np
+
 from astral import Astral, Location
 
 
 class Utils:
-    @staticmethod
-    def encrypt_data(key, message):
-        return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
 
-    @staticmethod
-    def send_post_request(url, data):
-        post_data = {
-            'data': data
-        }
-        return requests.post(url, data=post_data)
-
-    @staticmethod
-    def make_array_from_image(file):
-        return np.fromfile(file, dtype=np.uint8)
-
-    @staticmethod
-    def get_file_timestamp(file):
-        return datetime.fromtimestamp(os.path.getmtime(file))
-
-    def get_file_datetime_as_string(self, file, datetime_format):
-        return self.get_file_timestamp(file).strftime(datetime_format)
-
-    @staticmethod
-    def list_files(path):
-        return glob.iglob(os.path.join(path, '*'))
 
     @staticmethod
     def get_sunrise_and_sunset_time(cam_latitude, cam_longitude, cam_altitude, date=None):
