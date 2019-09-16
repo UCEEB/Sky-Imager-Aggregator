@@ -1,40 +1,90 @@
 #!/usr/bin/python3
-## LibraryForPi
-# @package   SendStorageV2
-# @details   Script sends the images that for some reason were not sent on time.
-# @version   3.0
-# @author   Jan Havrlant and Barbara Stefanovska
-#
 import threading
-
-import cv2
 import logging
 import os
 import datetime as dt
+
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
+import cv2
 
-import LibraryForPi
-from ConfigurationClass import ConfigurationObject
-import Gsm_Modbus
+from SkyImageAgg.Controller import Uploader, Scheduler
+from SkyImageAgg.GSM import Messenger, GPRS
+from SkyImageAgg.Collector import RPiCam, IPCam, IrrSensor
+from SkyImageAgg.Configuration import Configuration
+
+
+class SkyScanner(Configuration, Uploader):
+    def __init__(self):
+        super().__init__(
+            server=self.server,
+            camera_id=self.id,
+            auth_key=self.key,
+            storage_path=self.storage_path,
+            ext_storage_path=self.ext_storage_path,
+            time_format=self.time_format,
+            autonomous_mode=self.autonomous_mode
+        )
+        if self.light_sensor:
+            self.sensor = IrrSensor(
+                port=self.MODBUS_port,
+                address=self.MODBUS_sensor_address,
+                baudrate=self.MODBUS_baudrate,
+                bytesize=self.MODBUS_bytesize,
+                parity=self.MODBUS_parity,
+                stopbits=self.MODBUS_stopbits
+            )
+        if self.integrated_cam:
+            self.cam = RPiCam()
+        else:
+            self.cam = IPCam()
+
+        self.Messenger = Messenger()
+        self.GPRS = GPRS(ppp_config_file=self.GSM_ppp_config_file)
+        self.scheduler = Scheduler()
+
+    def set_requirements(self):
+        if not self.GPRS.hasInternetConnection():
+            self.GPRS.enable_GPRS()
+
+        self.scheduler.sync_time()
+        self.Messenger.send_sms(
+            self.GSM_phone_no,
+            'SOME MESSAGE AND INFO'
+        )
+
+
+
+
+
+
 
 
 def process_image(scheduler, config, logger):
+    # if autonomous
+    # put sync time in q
+    # put send sms in q
     if config.autonomous_mode and config.counter == -1:
         if config.GSM_time_sync:
             logger.info('Synchronizing time')
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
         if config.GSM_phone_no != '':
+
+
             SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
                 config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
+
+
             logger.info('Send SMS: ' + SMS_text)
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
 
     config.counter = 0
 
+    # save irradiance data
     if config.light_sensor:
         get_irradiance_data(config, logger)
 
+    ################## cap video in collector #############################
     logger.info('Capturing image')
     cap = cv2.VideoCapture(config.cap_url)
 
@@ -191,14 +241,15 @@ def start():
     add_image_job(main_scheduler, config, logger)
     main_scheduler.start()
 
+
 # todo check function
 def run_storage_controller(self):
     # Check if there are any images in the storage
-    if self.list_files(self.storage_path):
+    if self._list_files(self.storage_path):
         self.logger.info('Storage is not empty!')
         # iterate over the images in the storage path
 
-        for image in self.list_files(self.storage_path):
+        for image in self._list_files(self.storage_path):
             try:
                 self.upload_file_as_json(image)
                 self.logger.info('{} was successfully uploaded to server'.format(image))
@@ -216,6 +267,7 @@ def run_storage_controller(self):
 
     else:
         self.logger.info('Storage is empty!')
+
 
 # todo check function
 def save_to_storage(self, img, name, image_time):
@@ -240,6 +292,7 @@ def save_to_storage(self, img, name, image_time):
     else:
         self.logger.info('image ' + self.config.path_storage + '/' + name + ' saved to storage')
         pass
+
 
 if __name__ == '__main__':
     print('Starting SkyImager')
