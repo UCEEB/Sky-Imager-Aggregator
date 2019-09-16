@@ -33,7 +33,7 @@ class Configuration:
             self.camera_longitude = config.getfloat('SETTING', 'camera_longitude')
             self.camera_altitude = config.getfloat('SETTING', 'camera_altitude')
             self.debug_mode = config.getboolean('SETTING', 'debug_mode')
-            self.filetime_format = config.get('SETTING', 'filetime_format')
+            self.time_format = config.get('SETTING', 'filetime_format')
             self.image_quality = config.getint('SETTING', 'image_quality')
             self.crop = [
                 int(i.strip()) for i in config.get('SETTING', 'crop').split(',')
