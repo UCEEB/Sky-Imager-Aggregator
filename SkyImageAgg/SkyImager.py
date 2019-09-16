@@ -53,7 +53,8 @@ class SkyScanner(Configuration, Uploader):
             'SOME MESSAGE AND INFO'
         )
 
-
+    def scan(self):
+        pass
 
 
 
