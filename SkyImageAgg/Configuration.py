@@ -45,6 +45,7 @@ class Configuration:
             self.private_lib_name = config.get('SETTING', 'private_lib_name')
             self.id = config.get('SETTING', 'camera_id')
             self.key = bytes(config.get('SETTING', 'sha256_key'), 'ascii')
+            self.ntp_server = config.get('SETTING', 'ntp_server')
             self.autonomous_mode = config.getboolean('SETTING', 'autonomous_mode')
             self.light_sensor = config.getboolean('SETTING', 'light_sensor')
 
