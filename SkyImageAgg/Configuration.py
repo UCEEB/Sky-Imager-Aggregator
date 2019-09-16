@@ -22,7 +22,8 @@ class Configuration:
 
         try:
             self.cap_url = config.get('SETTING', 'cap_url')
-            self.path_storage = config.get('SETTING', 'path_storage')
+            self.storage_path = config.get('SETTING', 'storage_path')
+            self.ext_storage_path = config.get('SETTING', 'ext_storage_path')
             self.server = config.get('SETTING', 'upload_server')
             self.log_path = config.get('SETTING', 'log_path')
             self.log_to_console = config.getboolean('SETTING', 'log_to_console')
