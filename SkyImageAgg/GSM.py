@@ -142,7 +142,7 @@ class GPRS(Modem):
         self.ppp_config_file = ppp_config_file
 
     def enable_GPRS(self):
-        if self.hasGPRS():
+        if self.hasInternetConnection():
             self.logger.debug('Internet connection OK')
             return True
         self.enable_ppp()
@@ -151,7 +151,7 @@ class GPRS(Modem):
 
         while True:
             print(counter)
-            if self.hasGPRS():
+            if self.hasInternetConnection():
                 self.logger.debug('Internet connection OK')
                 return True
             else:
@@ -165,7 +165,7 @@ class GPRS(Modem):
             if counter > 11:
                 break
 
-    def hasGPRS(self, host="8.8.8.8", port=53, timeout=3):
+    def hasInternetConnection(self, host="8.8.8.8", port=53, timeout=3):
         try:
             socket.setdefaulttimeout(timeout)
             socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
