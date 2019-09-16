@@ -16,12 +16,9 @@ parent_dir = os.path.dirname(os.path.dirname(__file__))
 
 
 class Configuration:
-    def __init__(self, config_path=None):
+    def __init__(self):
         config = configparser.ConfigParser()
-        if not config_path:
-            config.read(os.path.join(parent_dir, 'config.ini'))
-        else:
-            config.read(config_path)
+        config.read(os.path.join(parent_dir, 'config.ini'))
 
         try:
             self.cap_url = config.get('SETTING', 'cap_url')
