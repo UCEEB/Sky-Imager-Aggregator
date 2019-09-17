@@ -1,12 +1,13 @@
 #!/usr/bin/python3
-import threading
-import logging
 import os
+import logging
+import threading
 import datetime as dt
 
+import cv2
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
-import cv2
+
 
 from SkyImageAgg.Controller import Uploader, Scheduler
 from SkyImageAgg.GSM import Messenger, GPRS
@@ -14,17 +15,9 @@ from SkyImageAgg.Collector import RPiCam, IPCam, IrrSensor
 from SkyImageAgg.Configuration import Configuration
 
 
-class SkyScanner(Configuration, Uploader):
+class SkyScanner(Configuration):
     def __init__(self):
-        super().__init__(
-            server=self.server,
-            camera_id=self.id,
-            auth_key=self.key,
-            storage_path=self.storage_path,
-            ext_storage_path=self.ext_storage_path,
-            time_format=self.time_format,
-            autonomous_mode=self.autonomous_mode
-        )
+        super().__init__()
         if self.light_sensor:
             self.sensor = IrrSensor(
                 port=self.MODBUS_port,
@@ -39,9 +32,19 @@ class SkyScanner(Configuration, Uploader):
         else:
             self.cam = IPCam()
 
+        self.uploader = Uploader(
+            server=self.server,
+            camera_id=self.id,
+            auth_key=self.key,
+            storage_path=self.storage_path,
+            ext_storage_path=self.ext_storage_path,
+            time_format=self.time_format,
+            autonomous_mode=self.autonomous_mode
+        )
+        self.scheduler = Scheduler()
         self.Messenger = Messenger()
         self.GPRS = GPRS(ppp_config_file=self.GSM_ppp_config_file)
-        self.scheduler = Scheduler()
+
 
     def set_requirements(self):
         if not self.GPRS.hasInternetConnection():
@@ -56,9 +59,11 @@ class SkyScanner(Configuration, Uploader):
     def scan(self):
         pass
 
+    def prioritize(self):
+        pass
 
-
-
+    def upload(self):
+        pass
 
 
 def process_image(scheduler, config, logger):
