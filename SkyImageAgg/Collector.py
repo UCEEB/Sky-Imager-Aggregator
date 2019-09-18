@@ -1,8 +1,12 @@
 import os
 import time
+import hashlib
+import re
 
 from picamera import PiCamera
 import minimalmodbus
+from bs4 import BeautifulSoup
+import requests
 
 
 class RPiCam:
@@ -23,9 +27,74 @@ class RPiCam:
         pass
 
 
-class IPCam:
-    def __init__(self):
-        pass
+class GeoVisionCam:
+    def __init__(self, cam_address, username, pwd):
+        self.address = cam_address
+        self.username = username
+        self.pwd = pwd
+        self.user_token = None
+        self.pass_token = None
+        self.desc_token = None
+        self.client_id = None
+
+    @staticmethod
+    def _gen_md5(string):
+        return hashlib.md5(string.encode('utf-8')).hexdigest()
+
+    def get_salt_values(self):
+        # get html and JS code as text
+        page = requests.get('{}/ssi.cgi/Login.htm'.format(self.address))
+        html_content = BeautifulSoup(page.content, "html.parser").text
+        # parse the salt values (cc1 and cc2)
+        salt = re.search(r'cc1=\"(.{4})\".*cc2=\"(.{4})\"', html_content)
+        return salt.groups()
+
+    def get_hashed_credentials(self):
+        cc1, cc2 = self.get_salt_values()
+        # hash mechanism/formula based on the JS code of camera interface
+        umd5 = '{}{}{}'.format(cc1, self.username.lower(), cc2)
+        pmd5 = '{}{}{}'.format(cc2, self.pwd.lower(), cc1)
+        return self._gen_md5(umd5).upper(), self._gen_md5(pmd5).upper()
+
+    def login(self):
+        umd5, pmd5 = self.get_hashed_credentials()
+        data = {
+            'grp': -1,
+            'username': '',
+            'password': '',
+            'Apply': 'Apply',
+            'umd5': umd5,
+            'pmd5': pmd5,
+            'browser': 1,
+            'is_check_OCX_OK': 0
+        }
+        headers = {
+            'User-Agent': 'Mozilla'
+        }
+        content = requests.post('{}/LoginPC.cgi'.format(self.address), data=data, headers=headers)
+
+        self.user_token, self.pass_token, self.desc_token = re.search(
+            r'gUserName\s=\s\"(.*)\";\n.*\s\"(.*)\";\n.*\"(.*)\"',
+            content.text).groups()
+
+        self.client_id = content.headers['Set-Cookie']
+
+    def cap_pic(self, image_path):
+        if self.user_token and self.pass_token and self.desc_token:
+            data = {
+                'username': self.user_token,
+                'password': self.pass_token,
+                'data_type': 0,
+                'attachment': 1,
+                'channel': 1,
+                'secret': 1,
+                'key': self.desc_token
+            }
+            r = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
+
+            with open(image_path, 'wb') as f:
+                for chunk in r.iter_content():
+                    f.write(chunk)
 
 
 class IrrSensor:
