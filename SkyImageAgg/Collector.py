@@ -35,7 +35,6 @@ class GeoVisionCam:
         self.user_token = None
         self.pass_token = None
         self.desc_token = None
-        self.client_id = None
 
     @staticmethod
     def _gen_md5(string):
@@ -71,15 +70,13 @@ class GeoVisionCam:
         headers = {
             'User-Agent': 'Mozilla'
         }
-        content = requests.post('{}/LoginPC.cgi'.format(self.address), data=data, headers=headers)
+        c = requests.post('{}/LoginPC.cgi'.format(self.address), data=data, headers=headers)
 
         self.user_token, self.pass_token, self.desc_token = re.search(
             r'gUserName\s=\s\"(.*)\";\n.*\s\"(.*)\";\n.*\"(.*)\"',
-            content.text).groups()
+            c.text).groups()
 
-        self.client_id = content.headers['Set-Cookie']
-
-    def cap_pic(self, image_path):
+    def cap_pic(self, output):
         if self.user_token and self.pass_token and self.desc_token:
             data = {
                 'username': self.user_token,
@@ -90,10 +87,10 @@ class GeoVisionCam:
                 'secret': 1,
                 'key': self.desc_token
             }
-            r = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
+            c = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
 
-            with open(image_path, 'wb') as f:
-                for chunk in r.iter_content():
+            with open(output, 'wb') as f:
+                for chunk in c.iter_content():
                     f.write(chunk)
 
 
