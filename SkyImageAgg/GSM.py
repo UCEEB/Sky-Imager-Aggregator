@@ -140,8 +140,10 @@ class Messenger(Modem):
         # transmitting AT command
         self.send_command('AT')
         time.sleep(0.2)
+
         if self.serial_com.inWaiting() == 0:
             return False
+
         try:
             # select message format
             self.send_command('AT+CMGF=1')
@@ -156,9 +158,12 @@ class Messenger(Modem):
             self.serial_com.read(self.serial_com.inWaiting())
         except Exception as e:
             self.logger.debug(e)
+
             if self.serial_com:
                 self.serial_com.close()
+
             return False
+
         return True
 
     def send_sms(self, phone_num, sms_text):
@@ -167,6 +172,7 @@ class Messenger(Modem):
             print('Trying to send SMS to {}...'.format(phone_num))
             outbox = self.submit_text(phone_num, sms_text)
             time.sleep(0.3)
+
         return outbox
 
 
@@ -178,7 +184,9 @@ class GPRS(Modem):
     def enable_GPRS(self):
         if self.hasInternetConnection():
             self.logger.debug('Internet connection OK')
+
             return True
+
         self.enable_ppp()
         time.sleep(5)
         counter = 0
@@ -187,15 +195,20 @@ class GPRS(Modem):
             print(counter)
             if self.hasInternetConnection():
                 self.logger.debug('Internet connection OK')
+
                 return True
+
             else:
                 counter += 1
                 time.sleep(2)
+
             if counter == 5:
                 self.disable_ppp()
                 self.enable_ppp()
+
             if counter == 9:
                 self.switch_off()
+
             if counter > 11:
                 break
 
