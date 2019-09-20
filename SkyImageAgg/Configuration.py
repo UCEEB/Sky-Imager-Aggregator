@@ -21,7 +21,9 @@ class Configuration:
         config.read(os.path.join(parent_dir, 'config.ini'))
 
         try:
-            self.cap_url = config.get('SETTING', 'cap_url')
+            self.cam_address = config.get('SETTING', 'cam_address')
+            self.cam_username = config.get('SETTING', 'cam_username')
+            self.cam_pwd = config.get('SETTING', 'cam_password')
             self.storage_path = config.get('SETTING', 'storage_path')
             self.ext_storage_path = config.get('SETTING', 'ext_storage_path')
             self.server = config.get('SETTING', 'upload_server')
