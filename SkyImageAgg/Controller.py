@@ -5,13 +5,12 @@ import hmac
 import csv
 import hashlib
 import glob
-from datetime import datetime
+from datetime import datetime, timezone
+import datetime
 
 import requests
 import numpy as np
-
-from SkyImageAgg.GSM import Messenger, GPRS
-from SkyImageAgg.Utils import Utils
+from astral import Astral, Location
 
 
 class Uploader:
@@ -25,7 +24,6 @@ class Uploader:
             time_format,
             autonomous_mode=False
     ):
-        super().__init__()
         self.cam_id = camera_id
         self.key = auth_key
         self.server = server
@@ -118,7 +116,6 @@ class Uploader:
         return json_response
 
     def send_thumbnail_file(self, file):
-        self.logger.debug('Uploading log to the server')
         counter = 0
         while True:
             counter += 1
@@ -192,3 +189,20 @@ class Scheduler:
         if os.system('sudo ntpdate -u tik.cesnet.cz') == 0:
             self.logger.info('Sync time OK')
             return True
+
+    @staticmethod
+    def get_sunrise_and_sunset_time(cam_latitude, cam_longitude, cam_altitude, date=None):
+        if not date:
+            date = datetime.now(timezone.utc).date()
+
+        astral = Astral()
+        astral.solar_depression = 'civil'
+        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
+
+        try:
+            sun = location.sun(date=date)
+        except Exception:
+            return datetime.combine(date, datetime.time(3, 0, 0, 0, timezone.utc)), \
+                   datetime.combine(date, datetime.time(21, 0, 0, 0, timezone.utc))
+
+        return sun['sunrise'], sun['sunset']
