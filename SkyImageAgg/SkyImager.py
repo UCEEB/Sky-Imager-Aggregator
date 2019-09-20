@@ -60,8 +60,9 @@ class SkyScanner(Configuration):
         output = os.path.join(self.storage_path, self._pick_name())
         self.cam.cap_pic(output=output)
 
-    def preprocess(self):
-        pass
+    def preprocess(self, image):
+        # Apply mask
+        self.preproc.apply_mask(image, self.mask_path)
 
     def upload(self):
         pass
