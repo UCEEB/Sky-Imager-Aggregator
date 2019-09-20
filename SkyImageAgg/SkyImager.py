@@ -3,15 +3,15 @@ import os
 import logging
 import threading
 import datetime as dt
+from datetime import datetime
 
 import cv2
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 
-
 from SkyImageAgg.Controller import Uploader, Scheduler
 from SkyImageAgg.GSM import Messenger, GPRS
-from SkyImageAgg.Collector import RPiCam, IPCam, IrrSensor
+from SkyImageAgg.Collector import RPiCam, GeoVisionCam, IrrSensor
 from SkyImageAgg.Configuration import Configuration
 
 
@@ -30,7 +30,11 @@ class SkyScanner(Configuration):
         if self.integrated_cam:
             self.cam = RPiCam()
         else:
-            self.cam = IPCam()
+            self.cam = GeoVisionCam(
+                cam_address=self.cam_address,
+                username=self.cam_username,
+                pwd=self.cam_pwd
+            )
 
         self.uploader = Uploader(
             server=self.server,
@@ -45,21 +49,24 @@ class SkyScanner(Configuration):
         self.Messenger = Messenger()
         self.GPRS = GPRS(ppp_config_file=self.GSM_ppp_config_file)
 
-
     def set_requirements(self):
         if not self.GPRS.hasInternetConnection():
             self.GPRS.enable_GPRS()
-
         self.scheduler.sync_time()
         self.Messenger.send_sms(
             self.GSM_phone_no,
             'SOME MESSAGE AND INFO'
         )
 
-    def scan(self):
-        pass
+    @staticmethod
+    def _pick_name():
+        return datetime.utcnow().strftime('%Y-%m-%d_%H%M%S.jpg')
 
-    def prioritize(self):
+    def scan(self):
+        output = os.path.join(self.storage_path, self._pick_name())
+        self.cam.cap_pic(output=output)
+
+    def preprocess(self):
         pass
 
     def upload(self):
@@ -75,11 +82,8 @@ def process_image(scheduler, config, logger):
             logger.info('Synchronizing time')
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_sync_time(config.GSM_port, logger, config.GSM_ppp_config_file))
         if config.GSM_phone_no != '':
-
-
             SMS_text = 'SkyImg start, df ' + LibraryForPi.get_freespace_storage(
                 config) + ', time ' + dt.datetime.utcnow().strftime("%y-%m-%d_%H-%M-%S")
-
 
             logger.info('Send SMS: ' + SMS_text)
             Gsm_Modbus.gsm_queue.put(Gsm_Modbus.C_send_SMS(config.GSM_phone_no, SMS_text, config.GSM_port, logger))
