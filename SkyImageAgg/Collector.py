@@ -76,6 +76,7 @@ class GeoVisionCam:
             r'gUserName\s=\s\"(.*)\";\n.*\s\"(.*)\";\n.*\"(.*)\"',
             c.text).groups()
 
+    # TODO "Exception management"
     def cap_pic(self, output):
         if self.user_token and self.pass_token and self.desc_token:
             data = {
@@ -92,6 +93,9 @@ class GeoVisionCam:
             with open(output, 'wb') as f:
                 for chunk in c.iter_content():
                     f.write(chunk)
+        else:
+            self.login()
+            self.cap_pic(output)
 
 
 class IrrSensor:
