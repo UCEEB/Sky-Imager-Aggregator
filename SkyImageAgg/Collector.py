@@ -2,6 +2,7 @@ import os
 import time
 import hashlib
 import re
+from abc import ABC, abstractmethod
 
 from picamera import PiCamera
 import minimalmodbus
@@ -9,7 +10,17 @@ from bs4 import BeautifulSoup
 import requests
 
 
-class RPiCam:
+class Camera(ABC):
+    @abstractmethod
+    def cap_pic(self, output):
+        pass
+
+    @abstractmethod
+    def cap_video(self, output):
+        pass
+
+
+class RPiCam(Camera):
     def __init__(self):
         self.cam = PiCamera()
 
@@ -20,14 +31,14 @@ class RPiCam:
         self.cam.stop_preview()
 
     # todo check
-    def cap_pic(self, image):
-        self.cam.capture(image)
+    def cap_pic(self, output):
+        self.cam.capture(output)
 
-    def cap_video(self):
+    def cap_video(self, output):
         pass
 
 
-class GeoVisionCam:
+class GeoVisionCam(Camera):
     def __init__(self, cam_address, username, pwd):
         self.address = cam_address
         self.username = username
@@ -40,7 +51,7 @@ class GeoVisionCam:
     def _gen_md5(string):
         return hashlib.md5(string.encode('utf-8')).hexdigest()
 
-    def get_salt_values(self):
+    def _get_salt_values(self):
         # get html and JS code as text
         page = requests.get('{}/ssi.cgi/Login.htm'.format(self.address))
         html_content = BeautifulSoup(page.content, "html.parser").text
@@ -48,15 +59,15 @@ class GeoVisionCam:
         salt = re.search(r'cc1=\"(.{4})\".*cc2=\"(.{4})\"', html_content)
         return salt.groups()
 
-    def get_hashed_credentials(self):
-        cc1, cc2 = self.get_salt_values()
+    def _get_hashed_credentials(self):
+        cc1, cc2 = self._get_salt_values()
         # hash mechanism/formula based on the JS code of camera interface
         umd5 = '{}{}{}'.format(cc1, self.username.lower(), cc2)
         pmd5 = '{}{}{}'.format(cc2, self.pwd.lower(), cc1)
         return self._gen_md5(umd5).upper(), self._gen_md5(pmd5).upper()
 
     def login(self):
-        umd5, pmd5 = self.get_hashed_credentials()
+        umd5, pmd5 = self._get_hashed_credentials()
         data = {
             'grp': -1,
             'username': '',
@@ -96,6 +107,9 @@ class GeoVisionCam:
         else:
             self.login()
             self.cap_pic(output)
+
+    def cap_video(self, output):
+        raise NotImplementedError
 
 
 class IrrSensor:
