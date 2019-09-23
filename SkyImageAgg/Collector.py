@@ -1,16 +1,16 @@
 import os
+import re
 import time
 import hashlib
-import re
 from io import BytesIO
 from abc import ABC, abstractmethod
 
-from picamera import PiCamera
-import minimalmodbus
-import numpy as np
-from bs4 import BeautifulSoup
 import requests
+import numpy as np
+import minimalmodbus
 from PIL import Image
+from picamera import PiCamera
+from bs4 import BeautifulSoup
 
 
 class Camera(ABC):
@@ -49,6 +49,7 @@ class GeoVisionCam(Camera):
         self.user_token = None
         self.pass_token = None
         self.desc_token = None
+        self.login()
 
     @staticmethod
     def _gen_md5(string):
@@ -110,9 +111,6 @@ class GeoVisionCam(Camera):
             with open(output, 'wb') as f:
                 for chunk in r.iter_content():
                     f.write(chunk)
-        else:
-            self.login()
-            self.cap_pic(output)
 
     def cap_video(self, output):
         raise NotImplementedError
