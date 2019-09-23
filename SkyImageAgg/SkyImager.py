@@ -2,47 +2,40 @@
 import os
 from datetime import datetime
 
-from SkyImageAgg.Controller import Uploader, Scheduler
+from SkyImageAgg.Controller import Controller, Scheduler
 from SkyImageAgg.GSM import Messenger, GPRS
-from SkyImageAgg.Collector import RPiCam, GeoVisionCam, IrrSensor
+from SkyImageAgg.Collector import IrrSensor
 from SkyImageAgg.Configuration import Configuration
-from SkyImageAgg.Processor import ImageProcessor
 
 
-class SkyScanner(Configuration):
+class SkyScanner(Controller, Configuration):
     def __init__(self):
-        super().__init__()
-        if self.light_sensor:
-            self.sensor = IrrSensor(
-                port=self.MODBUS_port,
-                address=self.MODBUS_sensor_address,
-                baudrate=self.MODBUS_baudrate,
-                bytesize=self.MODBUS_bytesize,
-                parity=self.MODBUS_parity,
-                stopbits=self.MODBUS_stopbits
-            )
-        if self.integrated_cam:
-            self.cam = RPiCam()
-        else:
-            self.cam = GeoVisionCam(
-                cam_address=self.cam_address,
-                username=self.cam_username,
-                pwd=self.cam_pwd
-            )
-
-        self.uploader = Uploader(
-            server=self.server,
-            camera_id=self.id,
-            auth_key=self.key,
-            storage_path=self.storage_path,
-            ext_storage_path=self.ext_storage_path,
-            time_format=self.time_format,
-            autonomous_mode=self.autonomous_mode
+        self.config = Configuration()
+        super().__init__(
+            server=self.config.server,
+            camera_id=self.config.id,
+            auth_key=self.config.key,
+            storage_path=self.config.storage_path,
+            ext_storage_path=self.config.ext_storage_path,
+            time_format=self.config.time_format,
+            autonomous_mode=self.config.autonomous_mode,
+            cam_address=self.config.cam_address,
+            username=self.config.cam_username,
+            pwd=self.config.cam_pwd,
+            rpi_cam=self.config.integrated_cam
         )
-        self.preproc = ImageProcessor()
+        if self.config.light_sensor:
+            self.sensor = IrrSensor(
+                port=self.config.MODBUS_port,
+                address=self.config.MODBUS_sensor_address,
+                baudrate=self.config.MODBUS_baudrate,
+                bytesize=self.config.MODBUS_bytesize,
+                parity=self.config.MODBUS_parity,
+                stopbits=self.config.MODBUS_stopbits
+            )
         self.scheduler = Scheduler()
         self.Messenger = Messenger()
-        self.GPRS = GPRS(ppp_config_file=self.GSM_ppp_config_file)
+        self.GPRS = GPRS(ppp_config_file=self.config.GSM_ppp_config_file)
 
     def set_requirements(self):
         if not self.GPRS.hasInternetConnection():
