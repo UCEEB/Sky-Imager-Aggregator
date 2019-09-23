@@ -36,6 +36,7 @@ class SkyScanner(Controller, Configuration):
         self.scheduler = Scheduler()
         self.Messenger = Messenger()
         self.GPRS = GPRS(ppp_config_file=self.config.GSM_ppp_config_file)
+        self.mask = self.get_binary_image(self.config.mask_path)
 
     def set_requirements(self):
         if not self.GPRS.hasInternetConnection():
@@ -47,16 +48,32 @@ class SkyScanner(Controller, Configuration):
         )
 
     def _pick_name(self):
-        return datetime.utcnow().strftime('{}.jpg'.format(self.time_format))
+        return datetime.utcnow().strftime(self.time_format)
 
     def scan(self):
         output = os.path.join(self.storage_path, self._pick_name())
-        self.cam.cap_pic(output=output)
+        return output, self.cam.cap_pic(output=output, return_arr=True)
 
-    def preprocess(self, image):
+    def preprocess(self, image_arr):
+        # Crop
+        image_arr = self.crop(image_arr, self.config.crop)
         # Apply mask
-        self.preproc.apply_mask(image, self.mask_path)
+        return self.apply_binary_mask(self.mask, image_arr)
 
     def upload(self):
         pass
 
+
+if __name__ == '__main__':
+    import time
+
+    s = SkyScanner()
+    count = 0
+    tic = time.time()
+    while count < 100:
+        tac = time.time()
+        img = s.scan()
+        s.save_as_pic(s.preprocess(img[1]), img[0])
+        print('{} took {} second(s)'.format(img[0], time.time() - tac))
+        count += 1
+    print('whole process took {} seconds'.format(time.time() - tic))
