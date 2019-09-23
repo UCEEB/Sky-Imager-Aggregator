@@ -1,18 +1,7 @@
 import cv2
+import numpy as np
 
 
-# todo check function
-def process_image(image):
-    print('Some processing...')
-
-    # implement some processing here
-    image_after_processing = image
-
-    # returns result of processing as another image in the same format
-    return image_after_processing
-
-
-# todo check function
 class ImageProcessor:
     """This class contains the useful methods required for image acquisition and processing in Raspberry Pi for
     Sky Image Scanner project.
@@ -70,6 +59,22 @@ class ImageProcessor:
         else:
             mask = self.load_image(mask_path)
         return cv2.bitwise_and(img, mask)
+
+    @staticmethod
+    def save_as_pic(input_arr, output):
+        cv2.imwrite(output, input_arr)
+
+    @staticmethod
+    def get_binary_image(input_image):
+        return np.where(cv2.imread(input_image) > 200, 1, 0)
+
+    @staticmethod
+    def apply_binary_mask(bin_mask_arr, image):
+        return np.multiply(bin_mask_arr, image)
+
+    @staticmethod
+    def crop(image_arr, crop):
+        return image_arr[crop[1]:crop[1]+crop[3], crop[0]:crop[0]+crop[2]]
 
     @staticmethod
     def apply_custom_processing(image):
