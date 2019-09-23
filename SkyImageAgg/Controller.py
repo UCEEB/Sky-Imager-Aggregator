@@ -40,6 +40,10 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
             self.storage_path = ext_storage_path
         else:
             self.storage_path = storage_path
+        if rpi_cam:
+            self.cam = RPiCam()
+        else:
+            self.cam = GeoVisionCam(cam_address, username, pwd)
 
     @staticmethod
     def _encrypt_data(key, message):
@@ -53,10 +57,6 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
         return requests.post(url, data=post_data)
 
     @staticmethod
-    def _make_array_from_image(file):
-        return np.fromfile(file, dtype=np.uint8)
-
-    @staticmethod
     def _get_file_timestamp(file):
         return datetime.fromtimestamp(os.path.getmtime(file))
 
@@ -67,9 +67,9 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
     def _list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
-    def upload_file_as_json(self, file, convert_to_array=True):
+    def upload_as_json(self, file, convert_to_array=True):
         if convert_to_array:
-            file = self._make_array_from_image(file)
+            file = self.make_array_from_image(file)
 
         data = {
             'status': 'ok',
@@ -94,7 +94,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
 
         return json_response
 
-    def upload_file_as_bson(self, file):
+    def upload_as_bson(self, file):
         data = {
             "status": "ok",
             "id": self.cam_id,
@@ -129,7 +129,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
             counter += 1
             self.enable_GPRS()
             try:
-                self.upload_file_as_bson(file)
+                self.upload_as_bson(file)
                 self.logger.info('Upload thumbnail to server OK')
                 self.disable_ppp()
                 return
@@ -148,7 +148,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
             counter += 1
             self.enable_GPRS()
             try:
-                self.upload_file_as_bson(log_file)
+                self.upload_as_bson(log_file)
                 self.logger.info('upload log to server OK')
 
                 return

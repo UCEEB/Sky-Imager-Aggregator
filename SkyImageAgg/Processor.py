@@ -80,5 +80,8 @@ class ImageProcessor:
     def apply_custom_processing(image):
         return image
 
+    @staticmethod
+    def make_array_from_image(image_path):
+        return np.fromfile(image_path, dtype=np.uint8)
 
 
