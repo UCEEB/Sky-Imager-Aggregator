@@ -2,12 +2,15 @@ import os
 import time
 import hashlib
 import re
+from io import BytesIO
 from abc import ABC, abstractmethod
 
 from picamera import PiCamera
 import minimalmodbus
+import numpy as np
 from bs4 import BeautifulSoup
 import requests
+from PIL import Image
 
 
 class Camera(ABC):
@@ -88,7 +91,7 @@ class GeoVisionCam(Camera):
             c.text).groups()
 
     # TODO "Exception management"
-    def cap_pic(self, output):
+    def cap_pic(self, output, return_arr=True):
         if self.user_token and self.pass_token and self.desc_token:
             data = {
                 'username': self.user_token,
@@ -99,10 +102,13 @@ class GeoVisionCam(Camera):
                 'secret': 1,
                 'key': self.desc_token
             }
-            c = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
+            r = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
+
+            if return_arr:
+                return np.array(Image.open(BytesIO(r.content)))
 
             with open(output, 'wb') as f:
-                for chunk in c.iter_content():
+                for chunk in r.iter_content():
                     f.write(chunk)
         else:
             self.login()
