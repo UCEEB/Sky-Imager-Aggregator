@@ -30,7 +30,6 @@ class Configuration:
             self.log_path = config.get('SETTING', 'log_path')
             self.log_to_console = config.getboolean('SETTING', 'log_to_console')
             self.integrated_cam = config.getboolean('SETTING', 'integrated_cam')
-            self.upload_format = config.get('SETTING', 'upload_format')
             self.camera_latitude = config.getfloat('SETTING', 'camera_latitude')
             self.camera_longitude = config.getfloat('SETTING', 'camera_longitude')
             self.camera_altitude = config.getfloat('SETTING', 'camera_altitude')
