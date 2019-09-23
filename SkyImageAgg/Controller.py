@@ -12,8 +12,11 @@ import requests
 import numpy as np
 from astral import Astral, Location
 
+from SkyImageAgg.Processor import ImageProcessor
+from SkyImageAgg.Collector import GeoVisionCam, RPiCam
 
-class Uploader:
+
+class Controller(ImageProcessor, RPiCam, GeoVisionCam):
     def __init__(
             self,
             server,
@@ -24,6 +27,7 @@ class Uploader:
             time_format,
             autonomous_mode=False
     ):
+        super().__init__()
         self.cam_id = camera_id
         self.key = auth_key
         self.server = server
