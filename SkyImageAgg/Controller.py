@@ -25,7 +25,11 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
             storage_path,
             ext_storage_path,
             time_format,
-            autonomous_mode=False
+            autonomous_mode=False,
+            cam_address=None,
+            username=None,
+            pwd=None,
+            rpi_cam=False
     ):
         super().__init__()
         self.cam_id = camera_id
