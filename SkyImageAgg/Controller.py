@@ -6,7 +6,6 @@ import csv
 import hashlib
 import glob
 from datetime import datetime, timezone
-import datetime
 
 import requests
 import cv2
@@ -39,8 +38,10 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
         self.server = server
         self.time_format = time_format
         if autonomous_mode:
+            self.offline_mode = True
             self.storage_path = ext_storage_path
         else:
+            self.offline_mode = False
             self.storage_path = storage_path
         if rpi_cam:
             self.cam = RPiCam()
@@ -69,8 +70,9 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
     def _list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
-    def upload_as_json(self, image, convert_to_array=False):
-        if convert_to_array:
+    def upload_as_json(self, image, time_stamp=datetime.utcnow(), convert_to_arr=False):
+        if convert_to_arr:
+            time_stamp = self._get_file_datetime_as_string(image, self.time_format)
             image = self.make_array_from_image(image)
 
         image = cv2.imencode(
@@ -82,25 +84,23 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
         data = {
             'status': 'ok',
             'id': self.cam_id,
-            'time': self._get_file_datetime_as_string(image, self.time_format),
+            'time': time_stamp,
             'coding': 'Base64',
             'data': base64.b64encode(image).decode('ascii')
         }
 
         json_data = json.dumps(data)
         signature = self._encrypt_data(self.key, json_data)
-        url = '{}{}'.format(self.server, signature)
-        response = self._send_post_request(url, json_data)
-
+        response = self._send_post_request('{}{}'.format(self.server, signature), json_data)
         try:
             json_response = json.loads(response.text)
         except Exception as e:
-            raise Exception(e)
+            raise ConnectionRefusedError(e)
 
         if json_response['status'] != 'ok':
-            raise Exception(json_response['message'])
+            raise ConnectionError(json_response['message'])
 
-        return json_response
+        return True
 
     def upload_as_bson(self, file):
         data = {
