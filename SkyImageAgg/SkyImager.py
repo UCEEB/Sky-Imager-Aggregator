@@ -14,6 +14,7 @@ class SkyScanner(Controller, Configuration):
         super().__init__(
             server=self.config.server,
             camera_id=self.config.id,
+            image_quality=self.config.image_quality,
             auth_key=self.config.key,
             storage_path=self.config.storage_path,
             ext_storage_path=self.config.ext_storage_path,
