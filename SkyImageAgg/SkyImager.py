@@ -62,10 +62,19 @@ class SkyScanner(Controller, Configuration):
         # Crop
         image_arr = self.crop(image_arr, self.config.crop)
         # Apply mask
-        return self.apply_binary_mask(self.mask, image_arr)
+        image_arr = self.apply_binary_mask(self.mask, image_arr)
+        return image_arr
 
-    def upload(self):
-        pass
+    def handle(self):
+        # capture the image and set the proper name and path
+        cap_time, img_path, img_arr = self.scan()
+        # preprocess the image
+        preproc_img = self.preprocess(img_arr)
+        # try to upload the image to the server, if failed, save it to storage
+        try:
+            self.upload_as_json(preproc_img, time_stamp=cap_time)
+        except Exception:
+            self.save_as_pic(preproc_img, img_path)
 
 
 if __name__ == '__main__':
