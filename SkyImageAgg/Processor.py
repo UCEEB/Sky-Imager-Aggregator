@@ -66,7 +66,7 @@ class ImageProcessor:
 
     @staticmethod
     def get_binary_image(input_image):
-        return np.where(cv2.imread(input_image) > 200, 1, 0)
+        return np.where(cv2.imread(input_image) == 255, 1, 0)
 
     @staticmethod
     def apply_binary_mask(bin_mask_arr, image):
@@ -76,12 +76,13 @@ class ImageProcessor:
     def crop(image_arr, crop):
         return image_arr[crop[1]:crop[1]+crop[3], crop[0]:crop[0]+crop[2]]
 
+    # TODO
     @staticmethod
     def apply_custom_processing(image):
         return image
 
     @staticmethod
     def make_array_from_image(image_path):
-        return np.fromfile(image_path, dtype=np.uint8)
+        return cv2.imread(image_path)
 
 
