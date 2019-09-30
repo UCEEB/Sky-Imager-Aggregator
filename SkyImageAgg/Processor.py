@@ -65,12 +65,12 @@ class ImageProcessor:
         cv2.imwrite('{}.jpg'.format(output_name), image_arr)
 
     @staticmethod
-    def get_binary_image(input_image):
-        return np.where(cv2.imread(input_image) == 255, 1, 0)
+    def get_binary_image(image_path):
+        return np.where(cv2.imread(image_path) == 255, 1, 0)
 
     @staticmethod
-    def apply_binary_mask(bin_mask_arr, image):
-        return np.multiply(bin_mask_arr, image)
+    def apply_binary_mask(bin_mask_arr, image_arr):
+        return np.multiply(bin_mask_arr, image_arr)
 
     @staticmethod
     def crop(image_arr, crop):
@@ -84,5 +84,6 @@ class ImageProcessor:
     @staticmethod
     def make_array_from_image(image_path):
         return cv2.imread(image_path)
+
 
 
