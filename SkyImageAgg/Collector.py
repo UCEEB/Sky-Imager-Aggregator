@@ -2,13 +2,12 @@ import os
 import re
 import time
 import hashlib
-from io import BytesIO
 from abc import ABC, abstractmethod
 
 import requests
-import numpy as np
+import cv2
 import minimalmodbus
-from PIL import Image
+import numpy as np
 from picamera import PiCamera
 from bs4 import BeautifulSoup
 
@@ -106,7 +105,7 @@ class GeoVisionCam(Camera):
             r = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
 
             if return_arr:
-                return np.array(Image.open(BytesIO(r.content)))
+                return cv2.imdecode(np.frombuffer(r.content, np.uint8), -1)
 
             with open(output, 'wb') as f:
                 for chunk in r.iter_content():
