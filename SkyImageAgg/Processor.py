@@ -61,8 +61,8 @@ class ImageProcessor:
         return cv2.bitwise_and(img, mask)
 
     @staticmethod
-    def save_as_pic(input_arr, output):
-        cv2.imwrite(output, input_arr)
+    def save_as_pic(image_arr, output_name):
+        cv2.imwrite('{}.jpg'.format(output_name), image_arr)
 
     @staticmethod
     def get_binary_image(input_image):
