@@ -48,12 +48,15 @@ class SkyScanner(Controller, Configuration):
             'SOME MESSAGE AND INFO'
         )
 
-    def _pick_name(self):
+    def _stamp_current_time(self):
         return datetime.utcnow().strftime(self.time_format)
 
     def scan(self):
-        output = os.path.join(self.storage_path, self._pick_name())
-        return output, self.cam.cap_pic(output=output, return_arr=True)
+        # store the current time according to the time format
+        cap_time = self._stamp_current_time()
+        # set the path to save the image
+        output_path = os.path.join(self.storage_path, cap_time)
+        return cap_time, output_path, self.cam.cap_pic(output=output_path, return_arr=True)
 
     def preprocess(self, image_arr):
         # Crop
