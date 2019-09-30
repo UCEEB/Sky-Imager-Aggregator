@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import datetime
 
 import requests
-import numpy as np
+import cv2
 from astral import Astral, Location
 
 from SkyImageAgg.Processor import ImageProcessor
@@ -21,6 +21,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
             self,
             server,
             camera_id,
+            image_quality,
             auth_key,
             storage_path,
             ext_storage_path,
@@ -33,6 +34,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
     ):
         super().__init__()
         self.cam_id = camera_id
+        self.image_quality = image_quality
         self.key = auth_key
         self.server = server
         self.time_format = time_format
