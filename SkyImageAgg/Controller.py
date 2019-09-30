@@ -69,16 +69,22 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
     def _list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
-    def upload_as_json(self, file, convert_to_array=True):
+    def upload_as_json(self, image, convert_to_array=False):
         if convert_to_array:
-            file = self.make_array_from_image(file)
+            image = self.make_array_from_image(image)
+
+        image = cv2.imencode(
+            '.jpg',
+            image,
+            [int(cv2.IMWRITE_JPEG_QUALITY), self.image_quality]
+        )[1]
 
         data = {
             'status': 'ok',
             'id': self.cam_id,
-            'time': self._get_file_datetime_as_string(file, self.time_format),
+            'time': self._get_file_datetime_as_string(image, self.time_format),
             'coding': 'Base64',
-            'data': base64.b64encode(file).decode('ascii')
+            'data': base64.b64encode(image).decode('ascii')
         }
 
         json_data = json.dumps(data)
