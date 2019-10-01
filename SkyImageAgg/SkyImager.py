@@ -39,11 +39,13 @@ class SkyScanner(Controller, Configuration):
                 parity=self.config.MODBUS_parity,
                 stopbits=self.config.MODBUS_stopbits
             )
-        self.scheduler = Scheduler()
         self.Messenger = Messenger()
         self.GPRS = GPRS(ppp_config_file=self.config.GSM_ppp_config_file)
         self.mask = self.get_binary_image(self.config.mask_path)
+        self.main_stack = LifoQueue()
+        self.aux_stack = LifoQueue()
 
+    # TODO
     def set_requirements(self):
         if not self.GPRS.hasInternetConnection():
             self.GPRS.enable_GPRS()
@@ -74,7 +76,7 @@ class SkyScanner(Controller, Configuration):
 
     def scan(self):
         # store the current time according to the time format
-        cap_time = self._stamp_current_time()
+        cap_time = self._stamp_curr_time()
         # set the path to save the image
         output_path = os.path.join(self.storage_path, cap_time)
         return cap_time, output_path, self.cam.cap_pic(output=output_path, return_arr=True)
@@ -99,15 +101,5 @@ class SkyScanner(Controller, Configuration):
 
 
 if __name__ == '__main__':
-    import time
-
     s = SkyScanner()
-    count = 0
-    tic = time.time()
-    while count < 100:
-        tac = time.time()
-        img = s.scan()
-        s.save_as_pic(s.preprocess(img[1]), img[0])
-        print('{} took {} second(s)'.format(img[0], time.time() - tac))
-        count += 1
-    print('whole process took {} seconds'.format(time.time() - tic))
+    s.run()
