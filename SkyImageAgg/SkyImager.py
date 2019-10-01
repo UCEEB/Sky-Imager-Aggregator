@@ -1,9 +1,14 @@
 #!/usr/bin/python3
 import os
-from datetime import datetime
+import datetime as dt
+import threading
+from queue import LifoQueue
+import time
 
-from SkyImageAgg.Controller import Controller, Scheduler
-from SkyImageAgg.GSM import Messenger, GPRS
+from astral import Astral, Location
+
+from SkyImageAgg.Controller import Controller
+from SkyImageAgg.GSM import Messenger, GPRS, retry_on_failure
 from SkyImageAgg.Collector import IrrSensor
 from SkyImageAgg.Configuration import Configuration
 
@@ -42,14 +47,30 @@ class SkyScanner(Controller, Configuration):
     def set_requirements(self):
         if not self.GPRS.hasInternetConnection():
             self.GPRS.enable_GPRS()
-        self.scheduler.sync_time()
         self.Messenger.send_sms(
             self.GSM_phone_no,
             'SOME MESSAGE AND INFO'
         )
 
-    def _stamp_current_time(self):
-        return datetime.utcnow().strftime(self.time_format)
+    @staticmethod
+    def sync_time():
+        if os.system('sudo ntpdate -u tik.cesnet.cz') == 0:
+            return True
+
+    @staticmethod
+    def get_sunrise_and_sunset_time(cam_latitude, cam_longitude, cam_altitude, date=None):
+        if not date:
+            date = dt.datetime.now(dt.timezone.utc).date()
+
+        astral = Astral()
+        astral.solar_depression = 'civil'
+        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
+        sun = location.sun(date=date)
+
+        return sun['sunrise'], sun['sunset']
+
+    def _stamp_curr_time(self):
+        return dt.datetime.utcnow().strftime(self.time_format)
 
     def scan(self):
         # store the current time according to the time format
