@@ -58,7 +58,7 @@ class GeoVisionCam(Camera):
         # get html and JS code as text
         page = requests.get('{}/ssi.cgi/Login.htm'.format(self.address))
         html_content = BeautifulSoup(page.content, "html.parser").text
-        # parse the salt values (cc1 and cc2)
+        # parse the salt values from the HTML/JS code of login page(cc1 and cc2)
         salt = re.search(r'cc1=\"(.{4})\".*cc2=\"(.{4})\"', html_content)
         return salt.groups()
 
@@ -90,7 +90,6 @@ class GeoVisionCam(Camera):
             r'gUserName\s=\s\"(.*)\";\n.*\s\"(.*)\";\n.*\"(.*)\"',
             c.text).groups()
 
-    # TODO "Exception management"
     def cap_pic(self, output, return_arr=True):
         if self.user_token and self.pass_token and self.desc_token:
             data = {
@@ -106,7 +105,7 @@ class GeoVisionCam(Camera):
 
             if return_arr:
                 return cv2.imdecode(np.frombuffer(r.content, np.uint8), -1)
-
+            # write the image in the disk
             with open(output, 'wb') as f:
                 for chunk in r.iter_content():
                     f.write(chunk)
