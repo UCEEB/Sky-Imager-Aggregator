@@ -88,7 +88,7 @@ class SkyScanner(Controller, Configuration):
         image_arr = self.apply_binary_mask(self.mask, image_arr)
         return image_arr
 
-    def handle(self):
+    def execute(self):
         # capture the image and set the proper name and path
         cap_time, img_path, img_arr = self.scan()
         # preprocess the image
@@ -96,8 +96,67 @@ class SkyScanner(Controller, Configuration):
         # try to upload the image to the server, if failed, save it to storage
         try:
             self.upload_as_json(preproc_img, time_stamp=cap_time)
+            print('Uploading {} was successful!'.format(img_path))
         except Exception:
-            self.save_as_pic(preproc_img, img_path)
+            print('Couldn\'t upload {}! Queueing for retry!'.format(img_path))
+            self.main_stack.put((cap_time, img_path, img_arr))
+
+    @retry_on_failure(attempts=2)
+    def retry_upload(self, image, time_stamp, convert_to_arr=False):
+        self.upload_as_json(image, time_stamp, convert_to_arr)
+
+    def execute_periodically(self, period=10):
+        while True:
+            kick_off = time.time()
+            self.execute()
+            try:
+                wait = period - (time.time() - kick_off)
+                print('Waiting {} seconds to capture the next image...'.format(round(wait, 1)))
+                time.sleep(wait)
+            except ValueError:
+                pass
+
+    def check_main_stack(self):
+        while True:
+            if not self.main_stack.empty():
+                item = self.main_stack.get()
+                try:
+                    self.retry_upload(image=item[2], time_stamp=item[0])
+                    print('Retrying to upload {} was successful!'.format(item[1]))
+                except Exception:
+                    print('Retrying to upload {} failed! Queueing for saving on disk'.format(item[1]))
+                    self.aux_stack.put(item)
+            else:
+                print('Main stack is empty!')
+                time.sleep(5)
+
+    def check_aux_stack(self):
+        while True:
+            if not self.aux_stack.empty():
+                item = self.aux_stack.get()
+                try:
+                    self.save_as_pic(image_arr=item[2], output_name=item[1])
+                    print('{} saved to storage.'.format(item[1]))
+                except Exception:
+                    time.sleep(10)
+            else:
+                print('Auxiliary stack is empty!')
+                time.sleep(5)
+
+    def run(self):
+        jobs = []
+        print('Initiating the uploader!')
+        uploader = threading.Thread(target=self.execute_periodically)
+        jobs.append(uploader)
+        print('Initiating the retriever!')
+        retriever = threading.Thread(target=self.check_main_stack)
+        jobs.append(retriever)
+        print('Initiating the writer!')
+        writer = threading.Thread(target=self.check_aux_stack)
+        jobs.append(writer)
+
+        for job in jobs:
+            job.start()
 
 
 if __name__ == '__main__':
