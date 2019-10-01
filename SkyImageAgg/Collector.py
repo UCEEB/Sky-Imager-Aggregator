@@ -110,6 +110,8 @@ class GeoVisionCam(Camera):
             with open(output, 'wb') as f:
                 for chunk in r.iter_content():
                     f.write(chunk)
+        else:
+            raise Exception('Authentication failed! Wrong username or password!')
 
     def cap_video(self, output):
         raise NotImplementedError
