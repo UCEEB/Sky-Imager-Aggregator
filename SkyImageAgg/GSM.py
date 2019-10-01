@@ -10,6 +10,39 @@ import RPi.GPIO as GPIO
 from SkyImageAgg.Logger import Logger
 
 
+def retry_on_failure(attempts, delay=3, back_off=1):
+    if back_off < 1:
+        raise ValueError("back_off must be greater than or equal to 1")
+
+    attempts = math.floor(attempts)
+    if attempts < 0:
+        raise ValueError("tries must be 0 or greater")
+
+    if delay <= 0:
+        raise ValueError("delay must be greater than 0")
+
+    def deco_retry(f):
+        def f_retry(*args, **kwargs):
+            m_tries, m_delay = attempts, delay  # make mutable
+
+            rv = f(*args, **kwargs)  # first attempt
+            while m_tries > 0:
+                if rv is True:  # Done on success
+                    return True
+
+                m_tries -= 1  # consume an attempt
+                time.sleep(m_delay)  # wait...
+                m_delay *= back_off  # make future wait longer
+
+                rv = f(*args, **kwargs)  # Try again
+
+            return False  # Ran out of tries :-(
+
+        return f_retry  # true decorator -> decorated function
+
+    return deco_retry  # @retry(arg[, ...]) -> true decoratorv
+
+
 class Modem(Logger):
     def __init__(self, port='/dev/ttyS0', pin=7):
         super().__init__()
@@ -96,39 +129,6 @@ class Modem(Logger):
 
         self.logger.debug('Modem is OFF')
         return False
-
-    @staticmethod
-    def retry_on_failure(attempts, delay=3, back_off=1):
-        if back_off < 1:
-            raise ValueError("back_off must be greater than or equal to 1")
-
-        attempts = math.floor(attempts)
-        if attempts < 0:
-            raise ValueError("tries must be 0 or greater")
-
-        if delay <= 0:
-            raise ValueError("delay must be greater than 0")
-
-        def deco_retry(f):
-            def f_retry(*args, **kwargs):
-                m_tries, m_delay = attempts, delay  # make mutable
-
-                rv = f(*args, **kwargs)  # first attempt
-                while m_tries > 0:
-                    if rv is True:  # Done on success
-                        return True
-
-                    m_tries -= 1  # consume an attempt
-                    time.sleep(m_delay)  # wait...
-                    m_delay *= back_off  # make future wait longer
-
-                    rv = f(*args, **kwargs)  # Try again
-
-                return False  # Ran out of tries :-(
-
-            return f_retry  # true decorator -> decorated function
-
-        return deco_retry  # @retry(arg[, ...]) -> true decoratorv
 
 
 class Messenger(Modem):
