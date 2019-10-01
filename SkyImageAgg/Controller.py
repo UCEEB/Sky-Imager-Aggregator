@@ -70,6 +70,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
     def _list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
+    @timeout(7, timeout_exception=TimeoutError, use_signals=False)
     def upload_as_json(self, image, time_stamp=datetime.utcnow(), convert_to_arr=False):
         if convert_to_arr:
             time_stamp = self._get_file_datetime_as_string(image, self.time_format)
@@ -98,6 +99,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
 
         return True
 
+    @timeout(7, timeout_exception=TimeoutError)
     def upload_as_bson(self, file):
         data = {
             "status": "ok",
