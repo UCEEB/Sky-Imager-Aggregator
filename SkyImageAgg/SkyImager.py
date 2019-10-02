@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import glob
 import os
 import datetime as dt
 import threading
@@ -22,7 +23,7 @@ def loop_it(time_gap=3):
                     f(*args, **kwargs)
                     try:
                         wait = time_gap - (time.time() - kick_off)
-                        print('Waiting {} seconds to capture the next image...'.format(round(wait, 1)))
+                        print('Waiting {} seconds...'.format(round(wait, 1)))
                         time.sleep(wait)
                     except ValueError:
                         pass
@@ -120,7 +121,7 @@ class SkyScanner(Controller, Configuration):
             print('Uploading {} was successful!'.format(img_path))
         except Exception:
             print('Couldn\'t upload {}! Queueing for retry!'.format(img_path))
-            self.main_stack.put((cap_time, img_path, img_arr))
+            self.upload_stack.put((cap_time, img_path, img_arr))
 
     @retry_on_failure(attempts=2)
     def retry_upload(self, image, time_stamp, convert_to_arr=False):
@@ -155,6 +156,22 @@ class SkyScanner(Controller, Configuration):
         else:
             time.sleep(5)
 
+    @loop_it(time_gap=False)
+    def upload_images_in_storage(self):
+        if len(os.listdir(self.storage_path)) == 0:
+            time.sleep(10)
+            print('{} is empty!'.format(self.storage_path))
+        else:
+            for image in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
+                time_stamp = os.path.split(image)[-1].split('.')[0]
+                try:
+                    print('uploading {}'.format(image))
+                    self.retry_upload(image=image, time_stamp=time_stamp, convert_to_arr=True)
+                    os.remove(image)
+                except Exception:
+                    print('failed')
+                    time.sleep(30)
+
     def run(self):
         jobs = []
         print('Initiating the uploader!')
@@ -173,4 +190,4 @@ class SkyScanner(Controller, Configuration):
 
 if __name__ == '__main__':
     s = SkyScanner()
-    s.run()
+    s.upload_images_in_storage()
