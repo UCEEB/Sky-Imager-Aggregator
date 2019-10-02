@@ -1,20 +1,19 @@
 #!/usr/bin/python3
+import datetime as dt
 import glob
 import os
-import datetime as dt
-import threading
-from queue import LifoQueue
-import time
 import pickle
+import threading
+import time
+from queue import LifoQueue
 
 import numpy as np
 from astral import Astral, Location
 
-from SkyImageAgg.Controller import Controller
-from SkyImageAgg.GSM import Messenger, GPRS, retry_on_failure
 from SkyImageAgg.Collector import IrrSensor
 from SkyImageAgg.Configuration import Configuration
-
+from SkyImageAgg.Controller import Controller
+from SkyImageAgg.GSM import Messenger, GPRS, retry_on_failure
 
 _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 _twilight_coll_ = os.path.join(_parent_dir_, 'ann_twilight_coll.pkl')
@@ -72,6 +71,8 @@ class SkyScanner(Controller, Configuration):
         self.mask = self.get_binary_image(self.config.mask_path)
         self.upload_stack = LifoQueue()
         self.write_stack = LifoQueue()
+        self.day_no = dt.datetime.now().timetuple().tm_yday
+        self.daytime = self.is_day()
 
     # TODO
     def set_requirements(self):
@@ -119,14 +120,20 @@ class SkyScanner(Controller, Configuration):
         ).astype(
             dt.datetime).tolist()
 
+        print('collecting twilight times. Please wait...')
         for date in dates:
-            print('collecting twilight times. Please wait...')
             collection[date.timetuple().tm_yday] = self.get_sunrise_and_sunset_time(date=date)
 
         with open(_twilight_coll_, 'wb') as file:
             pickle.dump(collection, file, protocol=pickle.HIGHEST_PROTOCOL)
 
         return collection
+
+    @staticmethod
+    def get_twilight_times(day):
+        with open(_twilight_coll_, 'rb') as handle:
+            col = pickle.load(handle)
+        return col[day]
 
     def _stamp_curr_time(self):
         return dt.datetime.utcnow().strftime(self.time_format)
