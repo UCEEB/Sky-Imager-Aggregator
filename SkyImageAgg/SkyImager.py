@@ -5,7 +5,9 @@ import datetime as dt
 import threading
 from queue import LifoQueue
 import time
+import pickle
 
+import numpy as np
 from astral import Astral, Location
 
 from SkyImageAgg.Controller import Controller
@@ -98,6 +100,29 @@ class SkyScanner(Controller, Configuration):
         sun = location.sun(date=date)
 
         return sun['sunrise'], sun['sunset']
+
+    def collect_annual_twilight_times(self):
+        collection = {
+            'geo_loc': (self.config.camera_latitude,
+                        self.config.camera_longitude)
+        }
+
+        dates = np.arange(
+            # 2021 is chosen as it's a leap year with 366 days
+            dt.datetime(2020, 1, 1),
+            dt.datetime(2021, 1, 1),
+            dt.timedelta(days=1)
+        ).astype(
+            dt.datetime).tolist()
+
+        for date in dates:
+            print('collecting twilight times. Please wait...')
+            collection[date.timetuple().tm_yday] = self.get_sunrise_and_sunset_time(date=date)
+
+        with open('ann_twilight_coll.pkl', 'wb') as file:
+            pickle.dump(collection, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return collection
 
     def _stamp_curr_time(self):
         return dt.datetime.utcnow().strftime(self.time_format)
