@@ -7,3 +7,6 @@ src/__pycache__/
 src/src.pyproj
 SkyImageAgg/test_tbd.py
 config.ini
+./systemd/*
+./test/
+/test/dummy/*
