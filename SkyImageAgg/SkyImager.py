@@ -72,7 +72,8 @@ class SkyScanner(Controller, Configuration):
         self.upload_stack = LifoQueue()
         self.write_stack = LifoQueue()
         self.day_no = dt.datetime.now().timetuple().tm_yday
-        self.daytime = self.is_day()
+        self.sunrise, self.sunset = self.get_twilight_times(self.day_no)
+        self.daytime = False
 
     # TODO
     def set_requirements(self):
