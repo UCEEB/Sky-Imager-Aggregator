@@ -253,6 +253,9 @@ class SkyScanner(Controller, Configuration):
         print('Initiating the disk checker!')
         disk_checker = threading.Thread(target=self.upload_images_in_storage)
         jobs.append(disk_checker)
+        print('Initiating the watcher!')
+        watcher = threading.Thread(target=self.watch_time)
+        jobs.append(watcher)
 
         for job in jobs:
             job.start()
