@@ -105,7 +105,7 @@ class SkyScanner(Controller, Configuration):
         ))
         sun = location.sun(date=date)
 
-        return sun['sunrise'], sun['sunset']
+        return sun['sunrise'].time(), sun['sunset'].time()
 
     def collect_annual_twilight_times(self):
         collection = {
@@ -172,7 +172,8 @@ class SkyScanner(Controller, Configuration):
 
     @loop_it(time_gap=10)
     def execute_periodically(self):
-        self.execute()
+        if self.daytime:
+            self.execute()
 
     @loop_it(time_gap=False)
     def check_upload_stack(self):
@@ -214,6 +215,29 @@ class SkyScanner(Controller, Configuration):
                 except Exception:
                     print('failed')
                     time.sleep(30)
+
+    @loop_it(time_gap=30)
+    def watch_time(self):
+        print('sunrise: {}\nsunset: {}'.format(self.sunrise, self.sunset))
+        curr_time = dt.datetime.utcnow()
+        print(curr_time.time())
+
+        if self.sunrise < curr_time.time() < self.sunset:
+            print('day')
+            if not self.daytime:
+                print('setting daytime True')
+                self.daytime = True
+        else:
+            print('night')
+            if self.daytime:
+                print('setting daytime False')
+                self.daytime = False
+            print('check if day changed')
+            if curr_time.timetuple().tm_yday != self.day_no:
+                print('day changed')
+                self.day_no = curr_time.timetuple().tm_yday
+                print('setting new sunrise and sunset')
+                self.sunrise, self.sunset = self.get_twilight_times(self.day_no)
 
     def run(self):
         jobs = []
