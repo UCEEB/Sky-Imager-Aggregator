@@ -81,14 +81,20 @@ class SkyScanner(Controller, Configuration):
         if os.system('sudo /usr/sbin/ntpd tik.cesnet.cz') == 0:
             return True
 
-    @staticmethod
-    def get_sunrise_and_sunset_time(cam_latitude, cam_longitude, cam_altitude, date=None):
+    def get_sunrise_and_sunset_time(self, date=None):
         if not date:
             date = dt.datetime.now(dt.timezone.utc).date()
 
         astral = Astral()
         astral.solar_depression = 'civil'
-        location = Location(('custom', 'region', cam_latitude, cam_longitude, 'UTC', cam_altitude))
+        location = Location((
+            'custom',
+            'region',
+            self.config.camera_latitude,
+            self.config.camera_longitude,
+            'UTC',
+            self.config.camera_altitude
+        ))
         sun = location.sun(date=date)
 
         return sun['sunrise'], sun['sunset']
