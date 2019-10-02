@@ -78,7 +78,7 @@ class SkyScanner(Controller, Configuration):
 
     @staticmethod
     def sync_time():
-        if os.system('sudo ntpdate -u tik.cesnet.cz') == 0:
+        if os.system('sudo /usr/sbin/ntpd tik.cesnet.cz') == 0:
             return True
 
     @staticmethod
