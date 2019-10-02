@@ -40,7 +40,7 @@ def retry_on_failure(attempts, delay=3, back_off=1):
 
         return f_retry  # true decorator -> decorated function
 
-    return deco_retry  # @retry(arg[, ...]) -> true decoratorv
+    return deco_retry  # @retry(arg[, ...]) -> true decorator
 
 
 class Modem(Logger):
