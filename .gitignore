@@ -10,3 +10,4 @@ config.ini
 ./systemd/*
 ./test/
 /test/dummy/*
+/ann_twilight_coll.pkl
