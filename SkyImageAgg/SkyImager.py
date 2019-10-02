@@ -183,6 +183,9 @@ class SkyScanner(Controller, Configuration):
         print('Initiating the writer!')
         writer = threading.Thread(target=self.check_write_stack)
         jobs.append(writer)
+        print('Initiating the disk checker!')
+        disk_checker = threading.Thread(target=self.upload_images_in_storage)
+        jobs.append(disk_checker)
 
         for job in jobs:
             job.start()
