@@ -13,6 +13,27 @@ from SkyImageAgg.Collector import IrrSensor
 from SkyImageAgg.Configuration import Configuration
 
 
+def loop_it(time_gap=3):
+    def deco_retry(f):
+        def f_retry(*args, **kwargs):
+            while True:
+                if time_gap:
+                    kick_off = time.time()
+                    f(*args, **kwargs)
+                    try:
+                        wait = time_gap - (time.time() - kick_off)
+                        print('Waiting {} seconds to capture the next image...'.format(round(wait, 1)))
+                        time.sleep(wait)
+                    except ValueError:
+                        pass
+                else:
+                    f(*args, **kwargs)
+
+        return f_retry
+
+    return deco_retry
+
+
 class SkyScanner(Controller, Configuration):
     def __init__(self):
         self.config = Configuration()
@@ -42,8 +63,8 @@ class SkyScanner(Controller, Configuration):
         self.Messenger = Messenger()
         self.GPRS = GPRS(ppp_config_file=self.config.GSM_ppp_config_file)
         self.mask = self.get_binary_image(self.config.mask_path)
-        self.main_stack = LifoQueue()
-        self.aux_stack = LifoQueue()
+        self.upload_stack = LifoQueue()
+        self.write_stack = LifoQueue()
 
     # TODO
     def set_requirements(self):
@@ -105,43 +126,34 @@ class SkyScanner(Controller, Configuration):
     def retry_upload(self, image, time_stamp, convert_to_arr=False):
         self.upload_as_json(image, time_stamp, convert_to_arr)
 
-    def execute_periodically(self, period=10):
-        while True:
-            kick_off = time.time()
-            self.execute()
+    @loop_it(time_gap=10)
+    def execute_periodically(self):
+        self.execute()
+
+    @loop_it(time_gap=False)
+    def check_upload_stack(self):
+        if not self.upload_stack.empty():
+            cap_time, img_path, img_arr = self.upload_stack.get()
             try:
-                wait = period - (time.time() - kick_off)
-                print('Waiting {} seconds to capture the next image...'.format(round(wait, 1)))
-                time.sleep(wait)
-            except ValueError:
-                pass
+                self.retry_upload(image=img_arr, time_stamp=cap_time)
+                print('Retrying to upload {} was successful!'.format(img_path))
+            except Exception:
+                print('Retrying to upload {} failed! Queueing for saving on disk'.format(img_path))
+                self.write_stack.put((cap_time, img_path, img_arr))
+        else:
+            time.sleep(5)
 
-    def check_main_stack(self):
-        while True:
-            if not self.main_stack.empty():
-                item = self.main_stack.get()
-                try:
-                    self.retry_upload(image=item[2], time_stamp=item[0])
-                    print('Retrying to upload {} was successful!'.format(item[1]))
-                except Exception:
-                    print('Retrying to upload {} failed! Queueing for saving on disk'.format(item[1]))
-                    self.aux_stack.put(item)
-            else:
-                print('Main stack is empty!')
-                time.sleep(5)
-
-    def check_aux_stack(self):
-        while True:
-            if not self.aux_stack.empty():
-                item = self.aux_stack.get()
-                try:
-                    self.save_as_pic(image_arr=item[2], output_name=item[1])
-                    print('{} saved to storage.'.format(item[1]))
-                except Exception:
-                    time.sleep(10)
-            else:
-                print('Auxiliary stack is empty!')
-                time.sleep(5)
+    @loop_it(time_gap=False)
+    def check_write_stack(self):
+        if not self.write_stack.empty():
+            cap_time, img_path, img_arr = self.write_stack.get()
+            try:
+                self.save_as_pic(image_arr=img_arr, output_name=img_path)
+                print('{} saved to storage.'.format(img_path))
+            except Exception:
+                time.sleep(10)
+        else:
+            time.sleep(5)
 
     def run(self):
         jobs = []
@@ -149,10 +161,10 @@ class SkyScanner(Controller, Configuration):
         uploader = threading.Thread(target=self.execute_periodically)
         jobs.append(uploader)
         print('Initiating the retriever!')
-        retriever = threading.Thread(target=self.check_main_stack)
+        retriever = threading.Thread(target=self.check_upload_stack)
         jobs.append(retriever)
         print('Initiating the writer!')
-        writer = threading.Thread(target=self.check_aux_stack)
+        writer = threading.Thread(target=self.check_write_stack)
         jobs.append(writer)
 
         for job in jobs:
