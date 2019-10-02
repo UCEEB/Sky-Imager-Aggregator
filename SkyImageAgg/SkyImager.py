@@ -16,6 +16,10 @@ from SkyImageAgg.Collector import IrrSensor
 from SkyImageAgg.Configuration import Configuration
 
 
+_parent_dir_ = os.path.dirname(os.path.dirname(__file__))
+_twilight_coll_ = os.path.join(_parent_dir_, 'ann_twilight_coll.pkl')
+
+
 def loop_it(time_gap=3):
     def deco_retry(f):
         def f_retry(*args, **kwargs):
@@ -119,7 +123,7 @@ class SkyScanner(Controller, Configuration):
             print('collecting twilight times. Please wait...')
             collection[date.timetuple().tm_yday] = self.get_sunrise_and_sunset_time(date=date)
 
-        with open('ann_twilight_coll.pkl', 'wb') as file:
+        with open(_twilight_coll_, 'wb') as file:
             pickle.dump(collection, file, protocol=pickle.HIGHEST_PROTOCOL)
 
         return collection
