@@ -71,7 +71,7 @@ class SkyScanner(Controller, Configuration):
         self.mask = self.get_binary_image(self.config.mask_path)
         self.upload_stack = LifoQueue()
         self.write_stack = LifoQueue()
-        self.day_no = dt.datetime.now().timetuple().tm_yday
+        self.day_no = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times(self.day_no)
         self.daytime = False
 
@@ -148,7 +148,8 @@ class SkyScanner(Controller, Configuration):
 
     def preprocess(self, image_arr):
         # Crop
-        image_arr = self.crop(image_arr, self.config.crop)
+        if not image_arr.shape == (1920, 1920):
+            image_arr = self.crop(image_arr, self.config.crop)
         # Apply mask
         image_arr = self.apply_binary_mask(self.mask, image_arr)
         return image_arr
@@ -232,7 +233,7 @@ class SkyScanner(Controller, Configuration):
             if self.daytime:
                 print('setting daytime False')
                 self.daytime = False
-            print('check if day changed')
+            print('check if day changed {} vs. {}'.format(curr_time.timetuple().tm_yday, self.day_no))
             if curr_time.timetuple().tm_yday != self.day_no:
                 print('day changed')
                 self.day_no = curr_time.timetuple().tm_yday
