@@ -10,6 +10,7 @@ import minimalmodbus
 import numpy as np
 from picamera import PiCamera
 from bs4 import BeautifulSoup
+from io import BytesIO
 
 
 class Camera(ABC):
@@ -25,19 +26,23 @@ class Camera(ABC):
 class RPiCam(Camera):
     def __init__(self):
         self.cam = PiCamera()
-
-    def start_preview(self):
+        self.cam.resolution = (1920, 1920)
         self.cam.start_preview()
-
-    def stop_preview(self):
-        self.cam.stop_preview()
+        time.sleep(2)
 
     # todo check
-    def cap_pic(self, output):
-        self.cam.capture(output)
+    def cap_pic(self, output, return_arr=True):
+        if return_arr:
+            output = BytesIO()
+            self.cam.capture(output, format='jpeg')
+            # "Rewind" the stream to the beginning so we can read its content
+            output.seek(0)
+            return cv2.imdecode(np.frombuffer(output.read(), np.uint8), -1)
+        else:
+            self.cam.capture(output)
 
     def cap_video(self, output):
-        pass
+        raise NotImplementedError
 
 
 class GeoVisionCam(Camera):
