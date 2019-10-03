@@ -38,10 +38,8 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
         self.server = server
         self.time_format = time_format
         if autonomous_mode:
-            self.offline_mode = True
             self.storage_path = ext_storage_path
         else:
-            self.offline_mode = False
             self.storage_path = storage_path
         if rpi_cam:
             self.cam = RPiCam()
