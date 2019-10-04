@@ -19,7 +19,7 @@ _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 _twilight_coll_ = os.path.join(_parent_dir_, 'ann_twilight_coll.pkl')
 
 
-def loop_it(time_gap=3):
+def loop_infinitely(time_gap=3):
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             while True:
@@ -84,9 +84,8 @@ class SkyScanner(Controller, Configuration):
             'SOME MESSAGE AND INFO'
         )
 
-    @staticmethod
-    def sync_time():
-        if os.system('sudo /usr/sbin/ntpd tik.cesnet.cz') == 0:
+    def sync_time(self):
+        if os.system('sudo /usr/sbin/ntpd {}'.format(self.config.ntp_server)) == 0:
             return True
 
     def get_sunrise_and_sunset_time(self, date=None):
@@ -171,12 +170,12 @@ class SkyScanner(Controller, Configuration):
     def retry_upload(self, image, time_stamp, convert_to_arr=False):
         self.upload_as_json(image, time_stamp, convert_to_arr)
 
-    @loop_it(time_gap=10)
+    @loop_infinitely(time_gap=10)
     def execute_periodically(self):
         if self.daytime:
             self.execute()
 
-    @loop_it(time_gap=False)
+    @loop_infinitely(time_gap=False)
     def check_upload_stack(self):
         if not self.upload_stack.empty():
             cap_time, img_path, img_arr = self.upload_stack.get()
@@ -189,7 +188,7 @@ class SkyScanner(Controller, Configuration):
         else:
             time.sleep(5)
 
-    @loop_it(time_gap=False)
+    @loop_infinitely(time_gap=False)
     def check_write_stack(self):
         if not self.write_stack.empty():
             cap_time, img_path, img_arr = self.write_stack.get()
@@ -201,7 +200,7 @@ class SkyScanner(Controller, Configuration):
         else:
             time.sleep(5)
 
-    @loop_it(time_gap=False)
+    @loop_infinitely(time_gap=False)
     def upload_images_in_storage(self):
         if len(os.listdir(self.storage_path)) == 0:
             time.sleep(10)
@@ -217,7 +216,7 @@ class SkyScanner(Controller, Configuration):
                     print('failed')
                     time.sleep(30)
 
-    @loop_it(time_gap=30)
+    @loop_infinitely(time_gap=30)
     def watch_time(self):
         print('sunrise: {}\nsunset: {}'.format(self.sunrise, self.sunset))
         curr_time = dt.datetime.utcnow()
@@ -264,4 +263,4 @@ class SkyScanner(Controller, Configuration):
 
 if __name__ == '__main__':
     s = SkyScanner()
-    s.upload_images_in_storage()
+    s.watch_time()
