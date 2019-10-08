@@ -241,21 +241,21 @@ class SkyScanner(Controller, Configuration):
 
     def run(self):
         jobs = []
+        print('Initiating the watcher!')
+        watcher = threading.Thread(name='Watcher', target=self.watch_time)
+        jobs.append(watcher)
         print('Initiating the uploader!')
-        uploader = threading.Thread(target=self.execute_periodically)
+        uploader = threading.Thread(name='Uploader', target=self.execute_periodically)
         jobs.append(uploader)
         print('Initiating the retriever!')
-        retriever = threading.Thread(target=self.check_upload_stack)
+        retriever = threading.Thread(name='Retriever', target=self.check_upload_stack)
         jobs.append(retriever)
         print('Initiating the writer!')
-        writer = threading.Thread(target=self.check_write_stack)
+        writer = threading.Thread(name='Writer', target=self.check_write_stack)
         jobs.append(writer)
         print('Initiating the disk checker!')
-        disk_checker = threading.Thread(target=self.upload_images_in_storage)
+        disk_checker = threading.Thread(name='Disk Checker', target=self.upload_images_in_storage)
         jobs.append(disk_checker)
-        print('Initiating the watcher!')
-        watcher = threading.Thread(target=self.watch_time)
-        jobs.append(watcher)
 
         for job in jobs:
             job.start()
@@ -263,4 +263,4 @@ class SkyScanner(Controller, Configuration):
 
 if __name__ == '__main__':
     s = SkyScanner()
-    s.watch_time()
+    s.run()
