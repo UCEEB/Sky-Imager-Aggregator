@@ -69,9 +69,8 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
         return glob.iglob(os.path.join(path, '*'))
 
     @timeout(7, timeout_exception=TimeoutError, use_signals=False)
-    def upload_as_json(self, image, time_stamp=datetime.utcnow(), convert_to_arr=False):
-        if convert_to_arr:
-            time_stamp = self._get_file_datetime_as_string(image, self.time_format)
+    def upload_as_json(self, image, time_stamp=datetime.utcnow()):
+        if isinstance(image, str):
             image = self.make_array_from_image(image)
 
         image = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), self.image_quality])[1]
