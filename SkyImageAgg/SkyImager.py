@@ -76,7 +76,18 @@ class SkyScanner(Controller, Configuration):
         self.daytime = False
 
     # TODO
-    def set_requirements(self):
+    def check_requirements(self):
+        if not os.path.exists(_twilight_coll_):
+            self.collect_annual_twilight_times()
+
+        if os.path.exists(_twilight_coll_):
+            with open(_twilight_coll_, 'rb') as handle:
+                col = pickle.load(handle)
+                if col['geo_loc'] != (self.config.camera_latitude, self.config.camera_longitude):
+                    print('It seems that your location has changed. Collecting new twilight'
+                          ' data for your new location. Please wait...')
+                    self.collect_annual_twilight_times()
+
         if not self.GPRS.hasInternetConnection():
             self.GPRS.enable_GPRS()
         self.Messenger.send_sms(
@@ -120,7 +131,7 @@ class SkyScanner(Controller, Configuration):
         ).astype(
             dt.datetime).tolist()
 
-        print('collecting twilight times. Please wait...')
+        print('collecting twilight times for your region. Please wait...')
         for date in dates:
             collection[date.timetuple().tm_yday] = self.get_sunrise_and_sunset_time(date=date)
 
