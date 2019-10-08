@@ -178,8 +178,8 @@ class SkyScanner(Controller, Configuration):
             self.upload_stack.put((cap_time, img_path, img_arr))
 
     @retry_on_failure(attempts=2)
-    def retry_upload(self, image, time_stamp, convert_to_arr=False):
-        self.upload_as_json(image, time_stamp, convert_to_arr)
+    def retry_upload(self, image, time_stamp):
+        self.upload_as_json(image, time_stamp)
 
     @loop_infinitely(time_gap=10)
     def execute_periodically(self):
@@ -212,7 +212,7 @@ class SkyScanner(Controller, Configuration):
             time.sleep(5)
 
     @loop_infinitely(time_gap=False)
-    def upload_images_in_storage(self):
+    def upload_images_from_storage(self):
         if len(os.listdir(self.storage_path)) == 0:
             time.sleep(10)
             print('{} is empty!'.format(self.storage_path))
@@ -221,7 +221,9 @@ class SkyScanner(Controller, Configuration):
                 time_stamp = os.path.split(image)[-1].split('.')[0]
                 try:
                     print('uploading {}'.format(image))
-                    self.retry_upload(image=image, time_stamp=time_stamp, convert_to_arr=True)
+                    image_arr = self.make_array_from_image(image)  # make a numpy array from image saved on disk
+                    image_arr = self.preprocess(image_arr)  # preprocess the image (Crop and mask)
+                    self.retry_upload(image=image_arr, time_stamp=time_stamp)  # try to upload
                     os.remove(image)
                 except Exception:
                     print('failed')
@@ -256,7 +258,7 @@ class SkyScanner(Controller, Configuration):
         writer = threading.Thread(name='Writer', target=self.check_write_stack)
         jobs.append(writer)
         print('Initiating the disk checker!')
-        disk_checker = threading.Thread(name='Disk Checker', target=self.upload_images_in_storage)
+        disk_checker = threading.Thread(name='Disk Checker', target=self.upload_images_from_storage)
         jobs.append(disk_checker)
 
         for job in jobs:
