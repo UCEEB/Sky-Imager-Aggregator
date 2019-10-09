@@ -84,8 +84,8 @@ class SkyScanner(Controller, Configuration):
             with open(_twilight_coll_, 'rb') as handle:
                 col = pickle.load(handle)
                 if col['geo_loc'] != (self.config.camera_latitude, self.config.camera_longitude):
-                    print('It seems that your location has changed. Collecting new twilight'
-                          ' data for your new location. Please wait...')
+                    print('It seems that your location has changed. Collecting '
+                          'new twilight data for your new location. Please wait...')
                     self.collect_annual_twilight_times()
 
         if not self.GPRS.hasInternetConnection():
@@ -128,8 +128,7 @@ class SkyScanner(Controller, Configuration):
             dt.datetime(2020, 1, 1),
             dt.datetime(2021, 1, 1),
             dt.timedelta(days=1)
-        ).astype(
-            dt.datetime).tolist()
+        ).astype(dt.datetime).tolist()
 
         print('collecting twilight times for your region. Please wait...')
         for date in dates:
@@ -175,7 +174,7 @@ class SkyScanner(Controller, Configuration):
             print('Uploading {} was successful!'.format(img_path))
         except Exception:
             print('Couldn\'t upload {}! Queueing for retry!'.format(img_path))
-            self.upload_stack.put((cap_time, img_path, img_arr))
+            self.upload_stack.put((cap_time, img_path, preproc_img))
 
     @retry_on_failure(attempts=2)
     def retry_upload(self, image, time_stamp):
@@ -231,7 +230,7 @@ class SkyScanner(Controller, Configuration):
 
     @loop_infinitely(time_gap=30)
     def watch_time(self):
-        curr_time = dt.datetime.utcnow()  # get the current time
+        curr_time = dt.datetime.utcnow()  # get the current utc time
 
         if self.sunrise < curr_time.time() < self.sunset:
             if not self.daytime:
