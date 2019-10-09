@@ -1,43 +1,34 @@
 import logging
-import datetime as dt
+from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 from os.path import join
 
 
 class Logger:
     def __init__(self):
-        self.logger, self.console_logger = self.set_logger()
+        self.path = None
+        self.name = __name__
+        self.logger = logging
 
-    @staticmethod
-    def set_logger(log_level=logging.DEBUG):
-        logger = logging.getLogger('main_logger')
-        console_logger = logging.StreamHandler()
-        logger.addHandler(console_logger)  # logging to console
-        logger.setLevel(log_level)
-        logger.info("Running program...")
+    def set_logger(self, log_dir=None, stream=True, file_suffix='%Y-%m-%d', level=logging.INFO):
+        handlers = []
+        if not log_dir and not stream:
+            raise ValueError('path and stream cannot be both False!')
 
-        return logger, console_logger
+        if log_dir:
+            log_file = join(log_dir, 'sia_{}.log'.format(datetime.utcnow().strftime(file_suffix)))
+            file_handler = TimedRotatingFileHandler(log_file, when='midnight', backupCount=20)
+            file_handler.suffix = file_suffix
+            handlers.append(file_handler)
 
-    def set_log_to_file(self, log_path, log_to_console=True):
-        handler = logging.FileHandler(join(log_path, '{}.log'.format(dt.date.today())))
-        try:
-            handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-            self.logger.addHandler(handler)
-        except Exception as e:
-            self.logger.error('log file error : {}'.format(e))
+        if stream:
+            handlers.append(logging.StreamHandler())
 
-        if not log_to_console:
-            self.logger.removeHandler(self.console_logger)  # disable console logging
+        logging.basicConfig(
+            handlers=handlers,
+            level=level,
+            format="[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s",
+            datefmt='%Y-%m-%dT%H:%M:%S'
+        )
 
-        return handler
-
-    def set_log_to_file_new_day(self, log_path):
-        handler = self.set_log_to_file(log_path=log_path)
-        self.logger.removeHandler(handler)
-        try:
-            handler = logging.FileHandler(join(log_path, '{}.log'.format(dt.date.today())))
-            handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-            self.logger.addHandler(handler)
-        except Exception as e:
-            self.logger.error('log file error : {}'.format(e))
-
-        return handler
+        setattr(self, 'logger', logging)
