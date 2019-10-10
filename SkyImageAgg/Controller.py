@@ -13,9 +13,10 @@ from timeout_decorator import timeout
 
 from SkyImageAgg.Processor import ImageProcessor
 from SkyImageAgg.Collector import GeoVisionCam, RPiCam
+from SkyImageAgg.Logger import Logger
 
 
-class Controller(ImageProcessor, RPiCam, GeoVisionCam):
+class Controller(ImageProcessor, RPiCam, GeoVisionCam, Logger):
     def __init__(
             self,
             server,
@@ -29,22 +30,28 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
             cam_address=None,
             username=None,
             pwd=None,
+            log_dir=None,
+            log_stream=True,
             rpi_cam=False
     ):
         super().__init__()
-        self.cam_id = camera_id
-        self.image_quality = image_quality
-        self.key = auth_key
-        self.server = server
-        self.time_format = time_format
-        if autonomous_mode:
-            self.storage_path = ext_storage_path
-        else:
-            self.storage_path = storage_path
-        if rpi_cam:
-            self.cam = RPiCam()
-        else:
-            self.cam = GeoVisionCam(cam_address, username, pwd)
+        self.set_logger(log_dir=log_dir, stream=log_stream)
+        try:
+            self.cam_id = camera_id
+            self.image_quality = image_quality
+            self.key = auth_key
+            self.server = server
+            self.time_format = time_format
+            if autonomous_mode:
+                self.storage_path = ext_storage_path
+            else:
+                self.storage_path = storage_path
+            if rpi_cam:
+                self.cam = RPiCam()
+            else:
+                self.cam = GeoVisionCam(cam_address, username, pwd)
+        except Exception as e:
+            self.logger.exception(e)
 
     @staticmethod
     def _encrypt_data(key, message):
@@ -190,4 +197,3 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam):
         else:
             self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
             self.logger.info('irradiance saved ' + str(irradiance))
-
