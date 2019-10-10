@@ -267,25 +267,28 @@ class SkyScanner(Controller, Configuration):
                     self.logger.exception(e)
 
     def run(self):
-        jobs = []
-        print('Initiating the watcher!')
-        watcher = threading.Thread(name='Watcher', target=self.watch_time)
-        jobs.append(watcher)
-        print('Initiating the uploader!')
-        uploader = threading.Thread(name='Uploader', target=self.execute_periodically)
-        jobs.append(uploader)
-        print('Initiating the retriever!')
-        retriever = threading.Thread(name='Retriever', target=self.check_upload_stack)
-        jobs.append(retriever)
-        print('Initiating the writer!')
-        writer = threading.Thread(name='Writer', target=self.check_write_stack)
-        jobs.append(writer)
-        print('Initiating the disk checker!')
-        disk_checker = threading.Thread(name='Disk Checker', target=self.check_disk)
-        jobs.append(disk_checker)
+        try:
+            jobs = []
+            self.logger.info('Initializing the watcher!')
+            watcher = threading.Thread(name='Watcher', target=self.watch_time)
+            jobs.append(watcher)
+            self.logger.info('Initializing the uploader!')
+            uploader = threading.Thread(name='Uploader', target=self.execute_periodically)
+            jobs.append(uploader)
+            self.logger.info('Initializing the retriever!')
+            retriever = threading.Thread(name='Retriever', target=self.check_upload_stack)
+            jobs.append(retriever)
+            self.logger.info('Initializing the writer!')
+            writer = threading.Thread(name='Writer', target=self.check_write_stack)
+            jobs.append(writer)
+            self.logger.info('Initializing the disk checker!')
+            disk_checker = threading.Thread(name='Disk Checker', target=self.check_disk)
+            jobs.append(disk_checker)
 
-        for job in jobs:
-            job.start()
+            for job in jobs:
+                job.start()
+        except Exception:
+            self.logger.critical('Sky Scanner has stopped working!', exc_info=True)
 
 
 if __name__ == '__main__':
