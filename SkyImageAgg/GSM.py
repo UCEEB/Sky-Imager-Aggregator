@@ -44,8 +44,9 @@ def retry_on_failure(attempts, delay=3, back_off=1):
 
 
 class Modem(Logger):
-    def __init__(self, port='/dev/ttyS0', pin=7):
+    def __init__(self, port='/dev/ttyS0', pin=7, log_path=None, stream=True):
         super().__init__()
+        self.set_logger(log_dir=log_path, stream=stream)
         self.port = port
         self.pin = pin
         self.serial_com = None
@@ -132,8 +133,8 @@ class Modem(Logger):
 
 
 class Messenger(Modem):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, port='/dev/ttyS0', pin=7, log_path=None, log_stream=True):
+        super().__init__(port=port, pin=pin, log_path=log_path, stream=log_stream)
 
     def submit_text(self, phone_num, sms_text):
         self.enable_serial_port(self.port)
@@ -169,7 +170,7 @@ class Messenger(Modem):
     def send_sms(self, phone_num, sms_text):
         outbox = True
         while outbox:
-            print('Trying to send SMS to {}...'.format(phone_num))
+            self.logger.info('Trying to send SMS to {}...'.format(phone_num))
             outbox = self.submit_text(phone_num, sms_text)
             time.sleep(0.3)
 
@@ -177,8 +178,8 @@ class Messenger(Modem):
 
 
 class GPRS(Modem):
-    def __init__(self, ppp_config_file):
-        super().__init__()
+    def __init__(self, ppp_config_file, port='/dev/ttyS0', pin=7, log_path=None, log_stream=True):
+        super().__init__(port=port, pin=pin, log_path=log_path, stream=log_stream)
         self.ppp_config_file = ppp_config_file
 
     def enable_GPRS(self):
@@ -192,7 +193,6 @@ class GPRS(Modem):
         counter = 0
 
         while True:
-            print(counter)
             if self.hasInternetConnection():
                 self.logger.debug('Internet connection OK')
 
