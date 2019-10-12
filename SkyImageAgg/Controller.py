@@ -16,11 +16,79 @@ from SkyImageAgg.Collector import GeoVisionCam, RPiCam
 from SkyImageAgg.Logger import Logger
 
 
-class Controller(ImageProcessor, RPiCam, GeoVisionCam, Logger):
+class TimeManager:
+    def __init__(self):
+        self.latitude = None
+        self.longitude = None
+        self.altitude = None
+
+    def set_location(self, camera_latitude, camera_longitude, camera_altitude):
+        self.latitude = camera_latitude
+        self.longitude = camera_longitude
+        self.altitude = camera_altitude
+
+    @staticmethod
+    def sync_time(ntp_server):
+        os.system('sudo /usr/sbin/ntpd {}'.format(ntp_server))
+
+    def find_sunrise_and_sunset_time(self, date=None):
+        if not date:
+            date = dt.datetime.now(dt.timezone.utc).date()
+
+        astral = Astral()
+        astral.solar_depression = 'civil'
+        location = Location((
+            'custom',
+            'region',
+            self.latitude,
+            self.longitude,
+            'UTC',
+            self.altitude
+        ))
+        sun = location.sun(date=date)
+
+        return sun['sunrise'].time(), sun['sunset'].time()
+
+    def collect_annual_twilight_times(self, dir_path):
+        collection = {
+            'geo_loc': (self.latitude,
+                        self.longitude)
+        }
+
+        dates = np.arange(
+            # 2020 is chosen as it's a leap year with 366 days
+            dt.datetime(2020, 1, 1),
+            dt.datetime(2021, 1, 1),
+            dt.timedelta(days=1)
+        ).astype(dt.datetime).tolist()
+
+        for date in dates:
+            collection[date.timetuple().tm_yday] = self.find_sunrise_and_sunset_time(date=date)
+
+        with open(os.path.join(dir_path, 'annual_twilight_times.pkl'), 'wb') as file:
+            pickle.dump(collection, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return collection
+
+    @staticmethod
+    def get_today_twilight_times(day_no):
+        with open(_twilight_coll_, 'rb') as handle:
+            col = pickle.load(handle)
+        return col[day_no]
+
+    @staticmethod
+    def stamp_curr_time(time_format):
+        return dt.datetime.utcnow().strftime(time_format)
+
+
+class Controller(ImageProcessor, RPiCam, GeoVisionCam, Logger, TimeManager):
     def __init__(
             self,
             server,
             camera_id,
+            camera_latitude,
+            camera_longitude,
+            camera_altitude,
             image_quality,
             auth_key,
             storage_path,
@@ -36,6 +104,7 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam, Logger):
     ):
         super().__init__()
         self.set_logger(log_dir=log_dir, stream=log_stream)
+        self.set_location(camera_latitude, camera_longitude, camera_altitude)
         try:
             self.cam_id = camera_id
             self.image_quality = image_quality
