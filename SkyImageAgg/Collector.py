@@ -122,7 +122,10 @@ class GeoVisionCam(Camera):
 
 
 class IrrSensor:
-    def __init__(self, port, address, baudrate, bytesize, parity, stopbits):
+    def __init__(self):
+        self.sensor = None
+
+    def set_sensor(self, port, address, baudrate, bytesize, parity, stopbits):
         self.sensor = minimalmodbus.Instrument(port, address)
         self.sensor.serial.baudrate = baudrate
         self.sensor.serial.bytesize = bytesize
