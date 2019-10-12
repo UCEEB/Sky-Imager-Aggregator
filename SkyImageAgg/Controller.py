@@ -12,7 +12,7 @@ import cv2
 from timeout_decorator import timeout
 
 from SkyImageAgg.Processor import ImageProcessor
-from SkyImageAgg.Collector import GeoVisionCam, RPiCam
+from SkyImageAgg.Collector import GeoVisionCam, RPiCam, IrrSensor
 from SkyImageAgg.Logger import Logger
 
 
@@ -81,7 +81,7 @@ class TimeManager:
         return dt.datetime.utcnow().strftime(time_format)
 
 
-class Controller(ImageProcessor, RPiCam, GeoVisionCam, Logger, TimeManager):
+class Controller(ImageProcessor, RPiCam, GeoVisionCam, IrrSensor, Logger, TimeManager):
     def __init__(
             self,
             server,
@@ -100,12 +100,28 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam, Logger, TimeManager):
             pwd=None,
             log_dir=None,
             log_stream=True,
-            rpi_cam=False
+            rpi_cam=False,
+            irradiance_sensor=False,
+            sensor_port=None,
+            sensor_address=None,
+            sensor_baudrate=None,
+            sensor_bytesize=None,
+            sensor_parity=None,
+            sensor_stopbits=None
     ):
         super().__init__()
         self.set_logger(log_dir=log_dir, stream=log_stream)
-        self.set_location(camera_latitude, camera_longitude, camera_altitude)
         try:
+            self.set_location(camera_latitude, camera_longitude, camera_altitude)
+            if irradiance_sensor:
+                self.set_sensor(
+                    port=sensor_port,
+                    address=sensor_address,
+                    baudrate=sensor_baudrate,
+                    bytesize=sensor_bytesize,
+                    parity=sensor_parity,
+                    stopbits=sensor_stopbits
+                )
             self.cam_id = camera_id
             self.image_quality = image_quality
             self.key = auth_key
