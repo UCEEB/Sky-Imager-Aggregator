@@ -10,7 +10,6 @@ from queue import LifoQueue
 import numpy as np
 from astral import Astral, Location
 
-from SkyImageAgg.Collector import IrrSensor
 from SkyImageAgg.Configuration import Configuration
 from SkyImageAgg.Controller import Controller
 from SkyImageAgg.GSM import Messenger, GPRS, retry_on_failure
@@ -58,18 +57,10 @@ class SkyScanner(Controller, Configuration):
             pwd=self.config.cam_pwd,
             rpi_cam=self.config.integrated_cam,
             log_dir=self.config.log_path,
-            log_stream=self.config.log_to_console
+            log_stream=self.config.log_to_console,
+            irradiance_sensor=self.config.light_sensor
         )
         try:
-            if self.config.light_sensor:
-                self.sensor = IrrSensor(
-                    port=self.config.MODBUS_port,
-                    address=self.config.MODBUS_sensor_address,
-                    baudrate=self.config.MODBUS_baudrate,
-                    bytesize=self.config.MODBUS_bytesize,
-                    parity=self.config.MODBUS_parity,
-                    stopbits=self.config.MODBUS_stopbits
-                )
             self.Messenger = Messenger()
             self.GPRS = GPRS(ppp_config_file=self.config.GSM_ppp_config_file)
             self.mask = self.get_binary_image(self.config.mask_path)
