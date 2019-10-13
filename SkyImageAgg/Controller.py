@@ -71,7 +71,7 @@ class TimeManager:
         return collection
 
     @staticmethod
-    def get_today_twilight_times(day_no):
+    def get_twilight_times_by_day(day_no):
         with open(_twilight_coll_, 'rb') as handle:
             col = pickle.load(handle)
         return col[day_no]
