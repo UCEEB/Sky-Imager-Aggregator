@@ -39,7 +39,7 @@ def loop_infinitely(time_gap=3):
 
 class SkyScanner(Controller, Configuration):
     def __init__(self):
-        self.config = Configuration()
+        self.config = self.set_config()
         super().__init__(
             server=self.config.server,
             camera_id=self.config.id,
@@ -70,7 +70,7 @@ class SkyScanner(Controller, Configuration):
         self.upload_stack = LifoQueue()
         self.write_stack = LifoQueue()
         self.day_no = dt.datetime.utcnow().timetuple().tm_yday
-        self.sunrise, self.sunset = self.get_today_twilight_times(day_no=self.day_no)
+        self.sunrise, self.sunset = self.get_twilight_times_by_day(day_no=self.day_no)
         self.daytime = False
 
     # TODO
@@ -202,7 +202,7 @@ class SkyScanner(Controller, Configuration):
             if curr_time.timetuple().tm_yday != self.day_no:  # check if the day has changed
                 self.day_no = curr_time.timetuple().tm_yday
                 try:
-                    self.sunrise, self.sunset = self.get_today_twilight_times(day_no=self.day_no)
+                    self.sunrise, self.sunset = self.get_twilight_times_by_day(day_no=self.day_no)
                 except Exception as e:
                     self.logger.exception(e)
 
