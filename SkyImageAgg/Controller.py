@@ -5,24 +5,34 @@ import hmac
 import csv
 import hashlib
 import glob
+import pickle
+import datetime as dt
 from datetime import datetime
 
 import requests
 import cv2
 from timeout_decorator import timeout
+import numpy as np
+from astral import Astral, Location
 
 from SkyImageAgg.Processor import ImageProcessor
 from SkyImageAgg.Collector import GeoVisionCam, RPiCam, IrrSensor
 from SkyImageAgg.Logger import Logger
 
+_parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
-class TimeManager:
-    def __init__(self):
-        self.latitude = None
-        self.longitude = None
-        self.altitude = None
 
-    def set_location(self, camera_latitude, camera_longitude, camera_altitude):
+class TimeManager(Logger):
+    def __init__(
+            self,
+            camera_latitude,
+            camera_longitude,
+            camera_altitude,
+            log_dir=None,
+            stream=True
+    ):
+        super().__init__()
+        self.set_logger(log_dir=log_dir, stream=stream)
         self.latitude = camera_latitude
         self.longitude = camera_longitude
         self.altitude = camera_altitude
@@ -49,7 +59,7 @@ class TimeManager:
 
         return sun['sunrise'].time(), sun['sunset'].time()
 
-    def collect_annual_twilight_times(self, dir_path):
+    def collect_annual_twilight_times(self):
         collection = {
             'geo_loc': (self.latitude,
                         self.longitude)
@@ -62,17 +72,19 @@ class TimeManager:
             dt.timedelta(days=1)
         ).astype(dt.datetime).tolist()
 
+        self.logger.info('Collecting annual twilight times...')
+
         for date in dates:
             collection[date.timetuple().tm_yday] = self.find_sunrise_and_sunset_time(date=date)
 
-        with open(os.path.join(dir_path, 'annual_twilight_times.pkl'), 'wb') as file:
+        with open(os.path.join(_parent_dir_, 'annual_twilight_times.pkl'), 'wb') as file:
             pickle.dump(collection, file, protocol=pickle.HIGHEST_PROTOCOL)
 
         return collection
 
     @staticmethod
     def get_twilight_times_by_day(day_no):
-        with open(_twilight_coll_, 'rb') as handle:
+        with open(os.path.join(_parent_dir_, 'annual_twilight_times.pkl'), 'rb') as handle:
             col = pickle.load(handle)
         return col[day_no]
 
@@ -81,7 +93,7 @@ class TimeManager:
         return dt.datetime.utcnow().strftime(time_format)
 
 
-class Controller(ImageProcessor, RPiCam, GeoVisionCam, IrrSensor, Logger, TimeManager):
+class Controller(TimeManager, ImageProcessor):
     def __init__(
             self,
             server,
@@ -94,12 +106,12 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam, IrrSensor, Logger, TimeMa
             storage_path,
             ext_storage_path,
             time_format,
+            log_dir=None,
+            log_stream=True,
             autonomous_mode=False,
             cam_address=None,
             username=None,
             pwd=None,
-            log_dir=None,
-            log_stream=True,
             rpi_cam=False,
             irradiance_sensor=False,
             sensor_port=None,
@@ -109,11 +121,19 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam, IrrSensor, Logger, TimeMa
             sensor_parity=None,
             sensor_stopbits=None
     ):
-        super().__init__()
-        self.set_logger(log_dir=log_dir, stream=log_stream)
+        super().__init__(
+            camera_latitude=camera_latitude,
+            camera_longitude=camera_longitude,
+            camera_altitude=camera_altitude,
+            stream=log_stream,
+            log_dir=log_dir
+        )
         try:
-            self.set_location(camera_latitude, camera_longitude, camera_altitude)
+            if not os.path.exists(os.path.join(_parent_dir_, 'annual_twilight_times.pkl')):
+                self.collect_annual_twilight_times()
+
             if irradiance_sensor:
+                self.light_sensor = IrrSensor()
                 self.set_sensor(
                     port=sensor_port,
                     address=sensor_address,
@@ -227,7 +247,6 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam, IrrSensor, Logger, TimeMa
                 self.upload_as_bson(file)
                 self.logger.info('Upload thumbnail to server OK')
                 self.disable_ppp()
-                return
             except Exception as e:
                 self.logger.error('Upload thumbnail to server error: {}'.format(e))
             if counter > 5:
@@ -246,7 +265,6 @@ class Controller(ImageProcessor, RPiCam, GeoVisionCam, IrrSensor, Logger, TimeMa
                 self.upload_as_bson(log_file)
                 self.logger.info('upload log to server OK')
 
-                return
             except Exception as e:
                 self.logger.error('upload log to server error : ' + str(e))
 
