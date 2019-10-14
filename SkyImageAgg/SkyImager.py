@@ -1,20 +1,14 @@
 #!/usr/bin/python3
-import datetime as dt
 import glob
+import datetime as dt
 import os
-import pickle
 import threading
 import time
 from queue import LifoQueue
 
-import numpy as np
-from astral import Astral, Location
-
 from SkyImageAgg.Configuration import Configuration
 from SkyImageAgg.Controller import Controller
 from SkyImageAgg.GSM import Messenger, GPRS, retry_on_failure
-
-_parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
 
 def loop_infinitely(time_gap=3):
@@ -62,7 +56,7 @@ class SkyScanner(Controller):
             irradiance_sensor=self.config.light_sensor
         )
         try:
-            self.Messenger = Messenger()
+            self.messenger = Messenger()
             self.GPRS = GPRS(ppp_config_file=self.config.GSM_ppp_config_file)
             self.mask = self.get_binary_image(self.config.mask_path)
         except Exception as e:
@@ -78,7 +72,7 @@ class SkyScanner(Controller):
     def check_requirements(self):
         if not os.path.exists(_twilight_coll_):
             try:
-                self.collect_annual_twilight_times(dir_path=_parent_dir_)
+                self.collect_annual_twilight_times()
             except Exception as e:
                 self.logger.exception(e)
 
@@ -91,20 +85,20 @@ class SkyScanner(Controller):
                 if col['geo_loc'] != (self.config.camera_latitude, self.config.camera_longitude):
                     self.logger.info('your location has changed. Collecting new twilight data...')
                     try:
-                        self.collect_annual_twilight_times(_parent_dir_)
+                        self.collect_annual_twilight_times()
                     except Exception as e:
                         self.logger.exception(e)
 
         if not self.GPRS.hasInternetConnection():
             try:
                 self.GPRS.enable_GPRS()
-                self.Messenger.send_sms(self.GSM_phone_no, 'SOME MESSAGE AND INFO')
+                self.messenger.send_sms(self.GSM_phone_no, 'SOME MESSAGE AND INFO')
             except Exception as e:
                 self.logger.exception(e)
 
     def scan(self):
         # store the current time according to the time format
-        cap_time = self._stamp_curr_time()
+        cap_time = self.stamp_curr_time(self.config.time_format)
         # set the path to save the image
         output_path = os.path.join(self.storage_path, cap_time)
         return cap_time, output_path, self.cam.cap_pic(output=output_path, return_arr=True)
@@ -112,7 +106,7 @@ class SkyScanner(Controller):
     def preprocess(self, image_arr):
         # Crop
         if not image_arr.shape == (1920, 1920):
-            image_arr = self.crop(image_arr, self.config.crop)
+            image_arr = self.crop(image_arr, self.config.crop_dim)
         # Apply mask
         image_arr = self.apply_binary_mask(self.mask, image_arr)
         return image_arr
@@ -125,9 +119,9 @@ class SkyScanner(Controller):
         # try to upload the image to the server, if failed, save it to storage
         try:
             self.upload_as_json(preproc_img, time_stamp=cap_time)
-            self.logger.info('Uploading {} was successful!'.format(img_path))
+            self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
         except Exception:
-            self.logger.warning('Couldn\'t upload {}! Queueing for retry!'.format(img_path))
+            self.logger.warning('Couldn\'t upload {}.jpg! Queueing for retry!'.format(cap_time))
             self.upload_stack.put((cap_time, img_path, preproc_img))
 
     @retry_on_failure(attempts=2)
