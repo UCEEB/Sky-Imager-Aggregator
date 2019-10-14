@@ -37,9 +37,10 @@ def loop_infinitely(time_gap=3):
     return deco_retry
 
 
-class SkyScanner(Controller, Configuration):
+class SkyScanner(Controller):
     def __init__(self):
-        self.config = self.set_config()
+        self.config = Configuration()
+        self.config.set_config()
         super().__init__(
             server=self.config.server,
             camera_id=self.config.id,
@@ -147,9 +148,11 @@ class SkyScanner(Controller, Configuration):
             cap_time, img_path, img_arr = self.upload_stack.get()
             try:
                 self.retry_upload(image=img_arr, time_stamp=cap_time)
-                self.logger.info('retrying to upload {} was successful!'.format(img_path))
+                self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
             except Exception as e:
-                self.logger.warning('retrying to upload {} failed! Queueing for saving on disk'.format(img_path))
+                self.logger.warning(
+                    'retrying to upload {}.jpg failed! Queueing for saving on disk'.format(cap_time)
+                )
                 self.logger.exception(e)
                 self.write_stack.put((cap_time, img_path, img_arr))
         else:
