@@ -36,7 +36,7 @@ class Configuration:
         self.debug_mode = self.config.getboolean('SETTING', 'debug_mode')
         self.time_format = self.config.get('SETTING', 'filetime_format')
         self.image_quality = self.config.getint('SETTING', 'image_quality')
-        self.crop = [
+        self.crop_dim = [
             int(i.strip()) for i in self.config.get('SETTING', 'crop').split(',')
         ]
         self.mask_path = self.config.get('SETTING', 'mask_path')
@@ -73,5 +73,3 @@ class Configuration:
             self.MODBUS_parity = self.config.get('MODBUS', 'parity')
             self.MODBUS_stopbits = self.config.getint('MODBUS', 'stopbits')
             self.MODBUS_csv_name = self.config.get('MODBUS', 'csv_name')
-
-        return self
