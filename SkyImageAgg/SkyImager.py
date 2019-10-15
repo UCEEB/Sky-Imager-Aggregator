@@ -89,13 +89,6 @@ class SkyScanner(Controller):
                     except Exception as e:
                         self.logger.exception(e)
 
-        if not self.GPRS.hasInternetConnection():
-            try:
-                self.GPRS.enable_GPRS()
-                self.messenger.send_sms(self.GSM_phone_no, 'SOME MESSAGE AND INFO')
-            except Exception as e:
-                self.logger.exception(e)
-
     def scan(self):
         # store the current time according to the time format
         cap_time = self.stamp_curr_time(self.config.time_format)
@@ -118,15 +111,43 @@ class SkyScanner(Controller):
         preproc_img = self.preprocess(img_arr)
         # try to upload the image to the server, if failed, save it to storage
         try:
-            self.upload_as_json(preproc_img, time_stamp=cap_time)
+            self.upload_image(preproc_img, time_stamp=cap_time)
             self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
         except Exception:
             self.logger.warning('Couldn\'t upload {}.jpg! Queueing for retry!'.format(cap_time))
             self.upload_stack.put((cap_time, img_path, preproc_img))
 
+    @loop_infinitely(time_gap=10)
+    def execute_and_store(self):
+        # capture the image and set the proper name and path for it
+        cap_time, img_path, img_arr = self.scan()
+        # preprocess the image
+        preproc_img = self.preprocess(img_arr)
+        # write it in storage
+        try:
+            self.save_as_pic(preproc_img, img_path)
+            self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
+        except Exception:
+            self.logger.exception('Couldn\'t write {}.jpg in storage!'.format(cap_time), exc_info=True)
+
+    @loop_infinitely(time_gap=60)
+    def send_thumbnail(self):
+        # capture the image and set the proper name and path for it
+        cap_time, img_path, img_arr = self.scan()
+        # preprocess the image
+        preproc_img = self.preprocess(img_arr)
+        # create thumbnail
+        thumbnail = self.make_thumbnail(preproc_img)
+
+        try:
+            self.upload_thumbnail(thumbnail, time_stamp=cap_time)
+            self.logger.info('Uploading {}.jpg thumbnail was successful!'.format(cap_time))
+        except Exception:
+            self.logger.exception('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
+
     @retry_on_failure(attempts=2)
-    def retry_upload(self, image, time_stamp):
-        self.upload_as_json(image, time_stamp)
+    def retry_uploading_image(self, image, time_stamp):
+        self.upload_image(image, time_stamp)
 
     @loop_infinitely(time_gap=10)
     def execute_periodically(self):
@@ -140,8 +161,9 @@ class SkyScanner(Controller):
     def check_upload_stack(self):
         if not self.upload_stack.empty():
             cap_time, img_path, img_arr = self.upload_stack.get()
+
             try:
-                self.retry_upload(image=img_arr, time_stamp=cap_time)
+                self.retry_uploading_image(image=img_arr, time_stamp=cap_time)
                 self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
             except Exception as e:
                 self.logger.warning(
@@ -156,6 +178,7 @@ class SkyScanner(Controller):
     def check_write_stack(self):
         if not self.write_stack.empty():
             cap_time, img_path, img_arr = self.write_stack.get()
+
             try:
                 self.save_as_pic(image_arr=img_arr, output_name=img_path)
                 self.logger.info('{} was successfully written on disk.'.format(img_path))
@@ -173,9 +196,10 @@ class SkyScanner(Controller):
         else:
             for image in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
                 time_stamp = os.path.split(image)[-1].split('.')[0]
+
                 try:
                     self.logger.info('uploading {} to the server'.format(image))
-                    self.retry_upload(image=image, time_stamp=time_stamp)  # try to upload
+                    self.retry_uploading_image(image=image, time_stamp=time_stamp)  # try to upload
                     self.logger.info('{} was successfully uploaded from disk to the server'.format(image))
                     os.remove(image)
                     self.logger.info('{} was removed from disk'.format(image))
