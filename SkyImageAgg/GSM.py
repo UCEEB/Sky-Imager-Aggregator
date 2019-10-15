@@ -5,22 +5,13 @@ import serial
 from serial.serialutil import SerialException
 import math
 
+from timeout_decorator import timeout
 import RPi.GPIO as GPIO
 
 from SkyImageAgg.Logger import Logger
 
 
 def retry_on_failure(attempts, delay=3, back_off=1):
-    if back_off < 1:
-        raise ValueError("back_off must be greater than or equal to 1")
-
-    attempts = math.floor(attempts)
-    if attempts < 0:
-        raise ValueError("tries must be 0 or greater")
-
-    if delay <= 0:
-        raise ValueError("delay must be greater than 0")
-
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             m_tries, m_delay = attempts, delay  # make mutable
@@ -80,7 +71,7 @@ class Modem(Logger):
         GPIO.output(self.pin, GPIO.HIGH)
 
     def switch_on(self):
-        if not self.isPowerOn():
+        if not self.is_power_on():
             self.logger.debug("Switching modem on...")
             self.set_pin()
             # give modem some time to login
@@ -89,44 +80,24 @@ class Modem(Logger):
             self.logger.debug("Modem is already powered on...")
 
     def switch_off(self):
-        if self.isPowerOn():
+        if self.is_power_on():
             self.logger.debug("Switching modem off...")
             self.set_pin()
             GPIO.cleanup()
             # give modem some time to log out
-            time.sleep(10)
+            time.sleep(5)
         else:
             self.logger.debug("GSM modem is already OFF...")
-
-    def force_switch_on(self, no_of_attempts=5):
-        self.logger.debug('GSM switch ON')
-        if self.isPowerOn():
-            self.logger.info('GSM is already ON and running!')
-        # try to restart the modem for 5 (default parameter) times
-        counter = 0
-        while True:
-            self.switch_on()
-            time.sleep(6)
-            counter += 1
-            if self.isPowerOn():
-                self.logger.info('GSM is ON and ready to go!')
-            if counter > no_of_attempts:
-                self.logger.debug('GSM switch error! So many attempts without any success!')
 
     def enable_serial_port(self, port, baudrate=115200, timeout=1):
         if not self.serial_com:
             try:
-                self.logger.info('Enabling serial port {} with baudrate {}'.format(port, baudrate))
-                setattr(self, 'serial_com', serial.Serial(port, baudrate=baudrate, timeout=timeout))
+                self.logger.info(
+                    'Enabling serial port {} with baudrate {}'.format(port, baudrate)
+                )
+                self.serial_com = serial.Serial(port, baudrate=baudrate, timeout=timeout)
             except Exception as e:
-                self.logger.debug('Serial port error: {}'.format(e))
-
-    def send_command(self, command):
-        if not self.serial_com:
-            raise SerialException
-        time.sleep(.2)
-        self.serial_com.write(command.encode() + b'\r\n')
-        time.sleep(.2)
+                self.logger.exception('Serial port error: {}'.format(e))
 
     def isPowerOn(self):
         self.logger.debug('Getting modem state...')
@@ -151,50 +122,53 @@ class Modem(Logger):
         self.logger.debug('Modem is OFF')
         return False
 
+    def send_command(self, command):
+        self.enable_serial_port(self.port)
+        time.sleep(.2)
+        self.serial_com.write(command.encode() + b'\r\n')
+        time.sleep(.2)
+
+    @retry_on_exception(attempts=3, delay=3)
+    def force_switch_on(self):
+        self.switch_on()
+
 
 class Messenger(Modem):
-    def __init__(self, port='/dev/ttyS0', pin=7, log_path=None, log_stream=True):
-        super().__init__(port=port, pin=pin, log_path=log_path, stream=log_stream)
+    def __init__(
+            self,
+            port='/dev/ttyS0',
+            pin=7,
+            log_path=None,
+            log_stream=True
+    ):
+        super().__init__(
+            port=port,
+            pin=pin,
+            log_path=log_path,
+            stream=log_stream
+        )
 
-    def submit_text(self, phone_num, sms_text):
+    def send_sms(self, phone_num, sms_text):
         self.enable_serial_port(self.port)
         # transmitting AT command
         self.send_command('AT')
         time.sleep(0.2)
 
-        if self.serial_com.inWaiting() == 0:
-            return False
-
-        try:
-            # select message format
-            self.send_command('AT+CMGF=1')
-            # disable the Echo
-            self.send_command('ATE0')
-            # send a message to a particular number
-            self.send_command('AT+CMGS=\"{}\"'.format(phone_num))
-            # send text
-            self.send_command(sms_text)
-            # enable to send sms
-            self.serial_com.write(b"\x1a\r\n")  # 0x1a : send   0x1b : Cancel send
-            self.serial_com.read(self.serial_com.inWaiting())
-        except Exception as e:
-            self.logger.debug(e)
-
-            if self.serial_com:
+        if not self.serial_com.inWaiting() == 0:
+            try:
+                # select message format
+                self.send_command('AT+CMGF=1')
+                # disable the Echo
+                self.send_command('ATE0')
+                # send a message to a particular number
+                self.send_command('AT+CMGS=\"{}\"'.format(phone_num))
+                # send text
+                self.send_command(sms_text)
+                # enable to send sms
+                self.serial_com.write(b"\x1a\r\n")  # 0x1a : send   0x1b : Cancel send
                 self.serial_com.close()
-
-            return False
-
-        return True
-
-    def send_sms(self, phone_num, sms_text):
-        outbox = True
-        while outbox:
-            self.logger.info('Trying to send SMS to {}...'.format(phone_num))
-            outbox = self.submit_text(phone_num, sms_text)
-            time.sleep(0.3)
-
-        return outbox
+            except Exception as e:
+                self.logger.exception(e)
 
 
 class GPRS(Modem):
