@@ -198,22 +198,29 @@ class GPRS(Modem):
     @retry_on_exception(attempts=3, delay=120)
     def enable_gprs(self):
         if not self.has_internet():
+            try:
+                if not self.is_power_on():
+                    self.switch_on()
+            except TimeoutError:
+                self.disable_gprs()
+                self.switch_off()  # restart modem
+                self.switch_on()
             time.sleep(1)
-            os.system('sudo pon {}'.format(os.path.basename(self.ppp_config_file)))
+            os.system(
+                'sudo pon {}'.format(os.path.basename(self.ppp_config_file))
+            )
             # wait 420 seconds for ppp to start, if not raise TimeoutError
             self.check_internet()
-
         else:
             self.logger.info('There is already an internet connection!')
 
     def disable_gprs(self):
         self.logger.debug('disabling ppp')
         os.system('sudo killall pppd > null')
-        time.sleep(1)
+        time.sleep(3)
 
     @staticmethod
     def has_ppp():
         if os.system('ps -A | grep pppd > null') == 0:
             return True
         return False
-
