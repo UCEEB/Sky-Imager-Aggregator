@@ -216,10 +216,29 @@ class SkyScanner(Controller):
             if not self.daytime:
                 self.logger.info('Daytime has started!')
                 self.daytime = True
+
+                if not self.messenger.is_power_on():
+                    self.messenger.switch_on()
+
+                sms_text = 'Good morning! :)\n'\
+                           'SkyScanner just started.\n' \
+                           'Available space: {} GB'.format(self.get_available_free_space())
+
+                self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
         else:
             if self.daytime:
                 self.logger.info('Daytime is over!')
                 self.daytime = False
+
+                if not self.messenger.is_power_on():
+                    self.messenger.switch_on()
+
+                sms_text = 'Good evening! :)\n'\
+                           'SkyScanner is done for today.\n' \
+                           'Available space: {} GB'.format(self.get_available_free_space())
+
+                self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+
             if curr_time.timetuple().tm_yday != self.day_no:  # check if the day has changed
                 self.day_no = curr_time.timetuple().tm_yday
                 try:
