@@ -99,28 +99,20 @@ class Modem(Logger):
             except Exception as e:
                 self.logger.exception('Serial port error: {}'.format(e))
 
-    def isPowerOn(self):
+    @timeout(seconds=15, timeout_exception=TimeoutError, use_signals=False)
+    def is_power_on(self):
         self.logger.debug('Getting modem state...')
-
-        try:
-            self.enable_serial_port(self.port)
-        except Exception as e:
-            self.logger.debug(e)
-            return False
-
+        self.enable_serial_port(self.port)
+        time.sleep(.8)
         self.send_command('AT')
         queue = self.serial_com.read(self.serial_com.inWaiting())
         time.sleep(.8)
 
-        if self.serial_com:
-            self.serial_com.close()
-
-        if queue.find(b'OK') != -1:
-            self.logger.info('Modem is ON')
+        if 'OK' in str(queue):
             return True
-
-        self.logger.debug('Modem is OFF')
-        return False
+        else:
+            self.logger.warning('Modem is off!')
+            return False
 
     def send_command(self, command):
         self.enable_serial_port(self.port)
