@@ -5,6 +5,7 @@ import hmac
 import csv
 import hashlib
 import glob
+import shutil
 import pickle
 import datetime as dt
 from datetime import datetime
@@ -180,7 +181,6 @@ class Controller(TimeManager, ImageProcessor):
     def _list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
-    @timeout(7, timeout_exception=TimeoutError, use_signals=False)
     def upload_as_json(self, image, time_stamp=datetime.utcnow()):
         if isinstance(image, str):
             image = self.make_array_from_image(image)
@@ -206,8 +206,7 @@ class Controller(TimeManager, ImageProcessor):
         if json_response['status'] != 'ok':
             raise ConnectionError(json_response['message'])
 
-    @timeout(7, timeout_exception=TimeoutError)
-    def upload_as_bson(self, file):
+    def upload_as_bson(self, file, server):
         data = {
             "status": "ok",
             "id": self.cam_id,
@@ -217,7 +216,7 @@ class Controller(TimeManager, ImageProcessor):
 
         json_data = json.dumps(data)
         signature = self._encrypt_data(self.key, json_data)
-        url = '{}{}'.format(self.server, signature)
+        url = '{}{}'.format(server, signature)
 
         if isinstance(file, str) or isinstance(file, bytes):
             files = [('image', file), ('json', json_data)]
@@ -236,41 +235,18 @@ class Controller(TimeManager, ImageProcessor):
 
         return json_response
 
-    def send_thumbnail_file(self, file):
-        counter = 0
-        while True:
-            counter += 1
-            self.enable_GPRS()
-            try:
-                self.upload_as_bson(file)
-                self.logger.info('Upload thumbnail to server OK')
-                self.disable_ppp()
-            except Exception as e:
-                self.logger.error('Upload thumbnail to server error: {}'.format(e))
-            if counter > 5:
-                self.logger.error('Upload thumbnail to server error: too many attempts')
-                break
-        self.logger.debug('Upload thumbnail to server end')
-        self.disable_ppp()
+    @timeout(60, timeout_exception=TimeoutError, use_signals=False)
+    def upload_thumbnail(self, image, time_stamp=datetime.utcnow()):
+        self.upload_as_json(image, time_stamp=time_stamp)
 
-    def upload_logfile(self, log_file):
+    @timeout(6, timeout_exception=TimeoutError, use_signals=False)
+    def upload_image(self, image, time_stamp=datetime.utcnow()):
+        self.upload_as_json(image, time_stamp=time_stamp)
+
+    @timeout(60, timeout_exception=TimeoutError, use_signals=False)
+    def upload_logfile(self, log_file, server):
         self.logger.debug('Start upload log to server')
-        counter = 0
-        while True:
-            counter += 1
-            self.enable_GPRS()
-            try:
-                self.upload_as_bson(log_file)
-                self.logger.info('upload log to server OK')
-
-            except Exception as e:
-                self.logger.error('upload log to server error : ' + str(e))
-
-            if counter > 5:
-                self.logger.error('error upload log to server')
-                break
-
-        self.logger.debug('end upload log to server')
+        self.upload_as_bson(log_file, server=server)
 
     def isStorageEmpty(self):
         if not self._list_files(self.storage_path):
@@ -298,3 +274,4 @@ class Controller(TimeManager, ImageProcessor):
         else:
             self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
             self.logger.info('irradiance saved ' + str(irradiance))
+
