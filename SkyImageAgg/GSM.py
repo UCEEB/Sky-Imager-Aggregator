@@ -172,107 +172,49 @@ class Messenger(Modem):
 
 
 class GPRS(Modem):
-    def __init__(self, ppp_config_file, port='/dev/ttyS0', pin=7, log_path=None, log_stream=True):
-        super().__init__(port=port, pin=pin, log_path=log_path, stream=log_stream)
+    def __init__(
+            self,
+            ppp_config_file,
+            port='/dev/ttyS0',
+            pin=7,
+            log_path=None,
+            log_stream=True
+    ):
+        super().__init__(
+            port=port,
+            pin=pin,
+            log_path=log_path,
+            stream=log_stream
+        )
         self.ppp_config_file = ppp_config_file
 
-    def enable_GPRS(self):
-        if self.hasInternetConnection():
-            self.logger.debug('Internet connection OK')
-
-            return True
-
-        self.enable_ppp()
-        time.sleep(5)
-        counter = 0
-
-        while True:
-            if self.hasInternetConnection():
-                self.logger.debug('Internet connection OK')
-
-                return True
-
-            else:
-                counter += 1
-                time.sleep(2)
-
-            if counter == 5:
-                self.disable_ppp()
-                self.enable_ppp()
-
-            if counter == 9:
-                self.switch_off()
-
-            if counter > 11:
-                break
-
-    def hasInternetConnection(self, host="8.8.8.8", port=53, timeout=3):
+    def has_internet(self, host="8.8.8.8", port=53, timeout=20):
         try:
             socket.setdefaulttimeout(timeout)
             socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
             return True
         except Exception as e:
-            self.logger.error('no internet connection : ' + str(e))
+            self.logger.error('no internet connection : {}'.format(e))
             return False
 
-    def enable_ppp(self):
-        if not self.isPowerOn():
-            self.logger.error('GSM model not switch on')
-            return False
-        self.disable_ppp()
-        time.sleep(1)
-        self.logger.debug('sudo pppd call')
-        os.system('sudo pppd call ' + self.ppp_config_file)
+    @timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
+    def check_internet(self):
+        while not self.has_internet():
+            time.sleep(5)
+        self.logger.info('Internet connection is enabled')
 
-        self.logger.debug('start ppp')
-        if not self.wait_for_ppp_start(100):
-            self.logger.error('No ppp enabled')
-            return False
+    @retry_on_exception(attempts=3, delay=120)
+    def enable_gprs(self):
+        if not self.has_internet():
+            time.sleep(1)
+            os.system('sudo pon {}'.format(os.path.basename(self.ppp_config_file)))
+            # wait 420 seconds for ppp to start, if not raise TimeoutError
+            self.check_internet()
 
-        os.system('sudo ip route add default dev ppp0 > null')
-        time.sleep(1)
-        counter = 0
-        while True:
-            if self.hasPPP():
-                return True
-            else:
-                counter += 1
-                time.sleep(2)
-            if counter > 10:
-                break
+        else:
+            self.logger.info('There is already an internet connection!')
 
-    def wait_for_ppp_start(self, timeout):
-        pipe_path = "/tmp/pppipe"
-        if not os.path.exists(pipe_path):
-            os.mkfifo(pipe_path)
-        pipe_fd = os.open(pipe_path, os.O_RDONLY | os.O_NONBLOCK)
-        counter = 0
-        with os.fdopen(pipe_fd) as pipe:
-            while True:
-                counter += 1
-                try:
-                    message = pipe.read()
-
-                    if message.find('UP') != -1:
-                        self.logger.debug('ppp UP')
-                        return True
-
-                except Exception as e:
-                    self.logger.info('error' + str(e))
-                    return False
-                time.sleep(0.5)
-                self.logger.debug('PPP - waiting for start')
-                if counter > timeout:
-                    break
-        return False
-
-    @staticmethod
-    def hasPPP():
-        if os.system('ps -A|grep pppd > null') == 0:
-            return True
-        return False
-
-    def disable_ppp(self):
+    def disable_gprs(self):
         self.logger.debug('disabling ppp')
-        os.system('sudo killall pppd 2 > null')
+        os.system('sudo killall pppd > null')
         time.sleep(1)
