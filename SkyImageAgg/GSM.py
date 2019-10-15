@@ -218,3 +218,10 @@ class GPRS(Modem):
         self.logger.debug('disabling ppp')
         os.system('sudo killall pppd > null')
         time.sleep(1)
+
+    @staticmethod
+    def has_ppp():
+        if os.system('ps -A | grep pppd > null') == 0:
+            return True
+        return False
+
