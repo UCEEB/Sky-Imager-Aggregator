@@ -30,17 +30,37 @@ def retry_on_failure(attempts, delay=3, back_off=1):
                 if rv is True:  # Done on success
                     return True
 
-                m_tries -= 1  # consume an attempt
-                time.sleep(m_delay)  # wait...
-                m_delay *= back_off  # make future wait longer
+                m_tries -= 1
+                print('try again in {} seconds'.format(m_delay))
+                time.sleep(m_delay)
+                m_delay *= back_off
 
                 rv = f(*args, **kwargs)  # Try again
 
-            return False  # Ran out of tries :-(
+            return False
 
         return f_retry  # true decorator -> decorated function
 
     return deco_retry  # @retry(arg[, ...]) -> true decorator
+
+
+def retry_on_exception(attempts, delay=3, back_off=1):
+    def deco_retry(f):
+        def f_retry(*args, **kwargs):
+            m_tries, m_delay = attempts, delay
+            while m_tries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except Exception:
+                    print('try again in {} seconds'.format(m_delay))
+                    time.sleep(m_delay)
+                    m_tries -= 1
+                    m_delay *= back_off
+            return f(*args, **kwargs)
+
+        return f_retry
+
+    return deco_retry
 
 
 class Modem(Logger):
