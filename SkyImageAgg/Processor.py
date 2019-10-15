@@ -8,12 +8,6 @@ class ImageProcessor:
     """
 
     def __init__(self):
-        """
-        Parameters
-        ----------
-        config_path: {None, str}, optional
-            if not None(default), path to the desired config file instead of the default one
-        """
         pass
 
     @staticmethod
