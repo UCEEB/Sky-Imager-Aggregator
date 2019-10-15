@@ -6,6 +6,7 @@ class ImageProcessor:
     """This class contains the useful methods required for image acquisition and processing in Raspberry Pi for
     Sky Image Scanner project.
     """
+
     def __init__(self):
         """
         Parameters
@@ -74,7 +75,7 @@ class ImageProcessor:
 
     @staticmethod
     def crop(image_arr, crop):
-        return image_arr[crop[1]:crop[1]+crop[3], crop[0]:crop[0]+crop[2]]
+        return image_arr[crop[1]:crop[1] + crop[3], crop[0]:crop[0] + crop[2]]
 
     # TODO
     @staticmethod
@@ -85,5 +86,11 @@ class ImageProcessor:
     def make_array_from_image(image_path):
         return cv2.imread(image_path)
 
-
+    @staticmethod
+    def make_thumbnail(image, size=(100, 100)):
+        return cv2.resize(
+            image,
+            dsize=(size[0], size[1]),
+            interpolation=cv2.INTER_NEAREST
+        )
 
