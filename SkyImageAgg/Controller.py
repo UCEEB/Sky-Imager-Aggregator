@@ -206,8 +206,6 @@ class Controller(TimeManager, ImageProcessor):
         if json_response['status'] != 'ok':
             raise ConnectionError(json_response['message'])
 
-        return True
-
     @timeout(7, timeout_exception=TimeoutError)
     def upload_as_bson(self, file):
         data = {
