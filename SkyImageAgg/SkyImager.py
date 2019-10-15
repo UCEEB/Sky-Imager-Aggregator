@@ -246,7 +246,24 @@ class SkyScanner(Controller):
                 except Exception as e:
                     self.logger.exception(e)
 
-    def run(self):
+    def run_offline(self):
+        try:
+            jobs = []
+            self.logger.info('Initializing the watcher!')
+            watcher = threading.Thread(name='Watcher', target=self.watch_time)
+            jobs.append(watcher)
+            self.logger.info('Initializing the writer!')
+            writer = threading.Thread(name='Writer', target=self.execute_and_store)
+            jobs.append(writer)
+            uploader = threading.Thread(name='Uploader', target=self.send_thumbnail)
+            jobs.append(uploader)
+
+            for job in jobs:
+                job.start()
+        except Exception:
+            self.logger.exception('Sky Scanner has stopped working!', exc_info=True)
+
+    def run_online(self):
         try:
             jobs = []
             self.logger.info('Initializing the watcher!')
@@ -268,9 +285,16 @@ class SkyScanner(Controller):
             for job in jobs:
                 job.start()
         except Exception:
-            self.logger.critical('Sky Scanner has stopped working!', exc_info=True)
+            self.logger.exception('Sky Scanner has stopped working!', exc_info=True)
+
+    def main(self):
+        if self.config.autonomous_mode:
+            self.run_offline()
+        else:
+            self.run_online()
 
 
 if __name__ == '__main__':
     s = SkyScanner()
-    s.run()
+    s.run_online()
+
