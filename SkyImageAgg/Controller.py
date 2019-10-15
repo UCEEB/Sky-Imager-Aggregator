@@ -255,8 +255,8 @@ class Controller(TimeManager, ImageProcessor):
             return False
 
     def get_available_free_space(self):
-        info = os.statvfs(self.storage_path)
-        return info.f_bsize * info.f_bfree / 1048576
+        free_space = shutil.disk_usage(self.storage_path)[2]
+        return round(free_space / 2**30, 1)
 
     # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
