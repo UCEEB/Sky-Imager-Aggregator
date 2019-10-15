@@ -22,7 +22,6 @@ def retry_on_failure(attempts, delay=3, back_off=1):
                     return True
 
                 m_tries -= 1
-                print('try again in {} seconds'.format(m_delay))
                 time.sleep(m_delay)
                 m_delay *= back_off
 
@@ -43,7 +42,6 @@ def retry_on_exception(attempts, delay=3, back_off=1):
                 try:
                     return f(*args, **kwargs)
                 except Exception:
-                    print('try again in {} seconds'.format(m_delay))
                     time.sleep(m_delay)
                     m_tries -= 1
                     m_delay *= back_off
