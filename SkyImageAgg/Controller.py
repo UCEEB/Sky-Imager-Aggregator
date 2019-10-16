@@ -7,6 +7,7 @@ import hashlib
 import glob
 import shutil
 import pickle
+import zipfile
 import datetime as dt
 from datetime import datetime
 
@@ -257,6 +258,12 @@ class Controller(TimeManager, ImageProcessor):
     def get_available_free_space(self):
         free_space = shutil.disk_usage(self.storage_path)[2]
         return round(free_space / 2**30, 1)
+
+    def compress_storage(self):
+        zip_archive = '{}.zip'.format(self.stamp_curr_time(self.time_format))
+        with zipfile.ZipFile(zip_archive, 'w') as zf:
+            for file in self._list_files(self.storage_path):
+                zf.write(filename=file)
 
     # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
