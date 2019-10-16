@@ -182,12 +182,11 @@ class Controller(TimeManager, ImageProcessor):
     def _list_files(path):
         return glob.iglob(os.path.join(path, '*'))
 
-    def upload_as_json(self, image, time_stamp=datetime.utcnow()):
+    def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
         if isinstance(image, str):
             image = self.make_array_from_image(image)
 
         image = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), self.image_quality])[1]
-
         data = {
             'status': 'ok',
             'id': self.cam_id,
@@ -195,17 +194,20 @@ class Controller(TimeManager, ImageProcessor):
             'coding': 'Base64',
             'data': base64.b64encode(image).decode('ascii')
         }
+        return json.dumps(data)
 
-        json_data = json.dumps(data)
+    def _upload_to_server(self, image, time_stamp=datetime.utcnow()):
+        json_data = self._make_json_from_image(image, time_stamp)
         signature = self._encrypt_data(self.key, json_data)
-        response = self._send_post_request('{}{}'.format(self.server, signature), json_data)
         try:
+            response = self._send_post_request('{}{}'.format(self.server, signature), json_data)
             json_response = json.loads(response.text)
-        except Exception as e:
-            raise ConnectionRefusedError(e)
 
-        if json_response['status'] != 'ok':
-            raise ConnectionError(json_response['message'])
+            if json_response['status'] != 'ok':
+                raise ConnectionError(json_response['message'])
+
+        except Exception as e:
+            self.logger.exception(e)
 
     def upload_as_bson(self, file, server):
         data = {
@@ -237,19 +239,19 @@ class Controller(TimeManager, ImageProcessor):
         return json_response
 
     @timeout(60, timeout_exception=TimeoutError, use_signals=False)
-    def upload_thumbnail(self, image, time_stamp=datetime.utcnow()):
-        self.upload_as_json(image, time_stamp=time_stamp)
+    def upload_thumbnail(self, thumbnail, time_stamp=datetime.utcnow()):
+        self._upload_to_server(thumbnail, time_stamp=time_stamp)
 
     @timeout(6, timeout_exception=TimeoutError, use_signals=False)
     def upload_image(self, image, time_stamp=datetime.utcnow()):
-        self.upload_as_json(image, time_stamp=time_stamp)
+        self._upload_to_server(image, time_stamp=time_stamp)
 
     @timeout(60, timeout_exception=TimeoutError, use_signals=False)
     def upload_logfile(self, log_file, server):
         self.logger.debug('Start upload log to server')
         self.upload_as_bson(log_file, server=server)
 
-    def isStorageEmpty(self):
+    def is_storage_empty(self):
         if not self._list_files(self.storage_path):
             return True
         else:
