@@ -178,10 +178,6 @@ class Controller(TimeManager, ImageProcessor):
     def _get_file_datetime_as_string(self, file, datetime_format):
         return self._get_file_timestamp(file).strftime(datetime_format)
 
-    @staticmethod
-    def _list_files(path):
-        return glob.iglob(os.path.join(path, '*'))
-
     def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
         if isinstance(image, str):
             image = self.make_array_from_image(image)
@@ -208,6 +204,7 @@ class Controller(TimeManager, ImageProcessor):
 
         except Exception as e:
             self.logger.exception(e)
+            raise ConnectionError
 
     def upload_as_bson(self, file, server):
         data = {
@@ -251,21 +248,19 @@ class Controller(TimeManager, ImageProcessor):
         self.logger.debug('Start upload log to server')
         self.upload_as_bson(log_file, server=server)
 
-    def is_storage_empty(self):
-        if not self._list_files(self.storage_path):
-            return True
-        else:
-            return False
-
     def get_available_free_space(self):
         free_space = shutil.disk_usage(self.storage_path)[2]
         return round(free_space / 2**30, 1)
 
     def compress_storage(self):
         zip_archive = '{}.zip'.format(self.stamp_curr_time(self.time_format))
-        with zipfile.ZipFile(zip_archive, 'w') as zf:
-            for file in self._list_files(self.storage_path):
-                zf.write(filename=file)
+        try:
+            with zipfile.ZipFile(os.path.join(self.storage_path, zip_archive), 'w') as zf:
+                self.logger.debug('Compressing the images in the storage...')
+                for file in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
+                    zf.write(filename=file)
+        except Exception as e:
+            self.logger.exception(e)
 
     # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
