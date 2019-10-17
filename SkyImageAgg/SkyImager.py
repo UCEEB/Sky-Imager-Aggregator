@@ -119,31 +119,33 @@ class SkyScanner(Controller):
 
     @loop_infinitely(time_gap=10)
     def execute_and_store(self):
-        # capture the image and set the proper name and path for it
-        cap_time, img_path, img_arr = self.scan()
-        # preprocess the image
-        preproc_img = self.preprocess(img_arr)
-        # write it in storage
-        try:
-            self.save_as_pic(preproc_img, img_path)
-            self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
-        except Exception:
-            self.logger.exception('Couldn\'t write {}.jpg in storage!'.format(cap_time), exc_info=True)
+        if self.daytime:
+            # capture the image and set the proper name and path for it
+            cap_time, img_path, img_arr = self.scan()
+            # preprocess the image
+            preproc_img = self.preprocess(img_arr)
+            # write it in storage
+            try:
+                self.save_as_pic(preproc_img, img_path)
+                self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
+            except Exception:
+                self.logger.exception('Couldn\'t write {}.jpg in storage!'.format(cap_time), exc_info=True)
 
     @loop_infinitely(time_gap=60)
     def send_thumbnail(self):
-        # capture the image and set the proper name and path for it
-        cap_time, img_path, img_arr = self.scan()
-        # preprocess the image
-        preproc_img = self.preprocess(img_arr)
-        # create thumbnail
-        thumbnail = self.make_thumbnail(preproc_img)
+        if self.daytime:
+            # capture the image and set the proper name and path for it
+            cap_time, img_path, img_arr = self.scan()
+            # preprocess the image
+            preproc_img = self.preprocess(img_arr)
+            # create thumbnail
+            thumbnail = self.make_thumbnail(preproc_img)
 
-        try:
-            self.upload_thumbnail(thumbnail, time_stamp=cap_time)
-            self.logger.info('Uploading {}.jpg thumbnail was successful!'.format(cap_time))
-        except Exception:
-            self.logger.exception('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
+            try:
+                self.upload_thumbnail(thumbnail, time_stamp=cap_time)
+                self.logger.info('Uploading {}.jpg thumbnail was successful!'.format(cap_time))
+            except Exception:
+                self.logger.exception('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
 
     @retry_on_failure(attempts=2)
     def retry_uploading_image(self, image, time_stamp):
@@ -208,36 +210,45 @@ class SkyScanner(Controller):
                     self.logger.exception(e)
                     time.sleep(30)
 
+    def do_sunrise_operations(self):
+        if not self.daytime:
+            self.logger.info('It\'s daytime!')
+            self.daytime = True
+
+            if not self.messenger.is_power_on():
+                self.messenger.switch_on()
+
+            sms_text = 'Good morning! :)\n' \
+                       'SkyScanner just started.\n' \
+                       'Available space: {} GB'.format(self.get_available_free_space())
+
+            self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+
+    def do_sunset_operations(self):
+        if self.daytime:
+            self.logger.info('Daytime is over!')
+            self.daytime = False
+
+            if self.config.autonomous_mode:
+                self.compress_storage()
+
+            if not self.messenger.is_power_on():
+                self.messenger.switch_on()
+
+            sms_text = 'Good evening! :)\n' \
+                       'SkyScanner is done for today.\n' \
+                       'Available space: {} GB'.format(self.get_available_free_space())
+
+            self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+
     @loop_infinitely(time_gap=30)
     def watch_time(self):
         curr_time = dt.datetime.utcnow()  # get the current utc time
 
         if self.sunrise < curr_time.time() < self.sunset:
-            if not self.daytime:
-                self.logger.info('Daytime has started!')
-                self.daytime = True
-
-                if not self.messenger.is_power_on():
-                    self.messenger.switch_on()
-
-                sms_text = 'Good morning! :)\n'\
-                           'SkyScanner just started.\n' \
-                           'Available space: {} GB'.format(self.get_available_free_space())
-
-                self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+            self.do_sunrise_operations()
         else:
-            if self.daytime:
-                self.logger.info('Daytime is over!')
-                self.daytime = False
-
-                if not self.messenger.is_power_on():
-                    self.messenger.switch_on()
-
-                sms_text = 'Good evening! :)\n'\
-                           'SkyScanner is done for today.\n' \
-                           'Available space: {} GB'.format(self.get_available_free_space())
-
-                self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+            self.do_sunset_operations()
 
             if curr_time.timetuple().tm_yday != self.day_no:  # check if the day has changed
                 self.day_no = curr_time.timetuple().tm_yday
@@ -255,7 +266,7 @@ class SkyScanner(Controller):
             self.logger.info('Initializing the writer!')
             writer = threading.Thread(name='Writer', target=self.execute_and_store)
             jobs.append(writer)
-            uploader = threading.Thread(name='Uploader', target=self.send_thumbnail)
+            uploader = threading.Thread(name='ThumbnailUploader', target=self.send_thumbnail)
             jobs.append(uploader)
 
             for job in jobs:
