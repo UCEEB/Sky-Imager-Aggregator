@@ -96,6 +96,9 @@ class Modem(Logger):
                 self.serial_com = serial.Serial(port, baudrate=baudrate, timeout=timeout)
             except Exception as e:
                 self.logger.exception('Serial port error: {}'.format(e))
+        else:
+            if not self.serial_com.isOpen():
+                self.serial_com.open()
 
     @timeout(seconds=15, timeout_exception=TimeoutError, use_signals=False)
     def is_power_on(self):
