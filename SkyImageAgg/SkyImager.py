@@ -73,43 +73,43 @@ class SkyScanner(Controller):
         True if daytime, false otherwise
 
     Parameters
-        ----------
-        server : `str`
-            the server that receives the photos taken from sky to perform further processing.
-        camera_id : `int`
-            the camera ID assigned by the vendor.
-        camera_latitude : `float`
-            latitude of the camera.
-        camera_longitude : `float`
-            longitude of the camera.
-        camera_altitude : `float`
-            the altitude of the camera.
-        image_quality : `int`
-            the desired jpeg quality of the taken image.
-        auth_key : `str`
-            the SHA256 key provided by the vendor.
-        storage_path : `str`
-            the path to the storage directory.
-        ext_storage_path : `str`
-            the path to the external storage directory.
-        time_format : `str`
-            the time format.
-        autonomous_mode : `boolean`
-            True if the device is in offline mode, False otherwise.
-        cam_address : `str`
-            IP camera address.
-        username : `str`
-            IP camera username.
-        pwd : `str`
-            IP camera password.
-        rpi_cam : `boolean`
-            True if raspberry pi camera is used.
-        log_dir : `str`
-            the path to the directory that the logs are stored.
-        log_stream : `boolean`
-            True if logs are needed to be streams to the console, False otherwise (silent).
-        irradiance_sensor : `boolean`
-            True if the irradiance sensor is attached to the device, False otherwise.
+    ----------
+    server : `str`
+        the server that receives the photos taken from sky to perform further processing.
+    camera_id : `int`
+        the camera ID assigned by the vendor.
+    camera_latitude : `float`
+        latitude of the camera.
+    camera_longitude : `float`
+        longitude of the camera.
+    camera_altitude : `float`
+        the altitude of the camera.
+    image_quality : `int`
+        the desired jpeg quality for the taken image.
+    auth_key : `str`
+        the SHA-256 key provided by the vendor.
+    storage_path : `str`
+        the path to the storage directory.
+    ext_storage_path : `str`
+        the path to the external storage directory.
+    time_format : `str`
+        the time format.
+    autonomous_mode : `boolean`
+        True if the device is in offline mode, False otherwise.
+    cam_address : `str`
+        IP camera address.
+    username : `str`
+        IP camera username.
+    pwd : `str`
+        IP camera password.
+    rpi_cam : `boolean`
+        True if raspberry pi camera is used.
+    log_dir : `str`
+        the path to the directory that the logs are stored.
+    log_stream : `boolean`
+        True if logs are needed to be streams to the console, False otherwise (silent).
+    irradiance_sensor : `boolean`
+        True if the irradiance sensor is attached to the device, False otherwise.
     """
     def __init__(self):
         self.config = Configuration()
@@ -368,7 +368,8 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=30)
     def watch_time(self):
         """
-        Recurrently checks the time to start/stop the executing operations.
+        Recurrently checks the time to start/stop the sunrise/sunset operations. It also assigns a new day order
+        to `day_no` attribute right after the midnight.
         """
         curr_time = dt.datetime.utcnow()
 
@@ -386,8 +387,8 @@ class SkyScanner(Controller):
 
     def run_offline(self):
         """
-        Concurrently Runs the watching, writing and thumbnailUploading operations recurrently
-        in multiple threads in offline mode.
+        Concurrently Runs the watching, writing and thumbnail-uploading operations recurrently in multiple threads
+         in offline mode.
         """
         try:
             jobs = []
@@ -407,8 +408,8 @@ class SkyScanner(Controller):
 
     def run_online(self):
         """
-        Concurrently Runs the watching, writing and thumbnailUploading operations recurrently
-        in multiple threads in online mode.
+        Concurrently Runs the watching, writing and thumbnailUploading operations recurrently in multiple threads
+         in online mode.
         """
         try:
             jobs = []
