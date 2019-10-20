@@ -71,10 +71,8 @@ class SkyScanner(Controller):
         sunset time
     daytime : `boolean`
         True if daytime, false otherwise
-    """
-    def __init__(self):
-        """
-        Parameters
+
+    Parameters
         ----------
         server : `str`
             the server that receives the photos taken from sky to perform further processing.
@@ -112,7 +110,8 @@ class SkyScanner(Controller):
             True if logs are needed to be streams to the console, False otherwise (silent).
         irradiance_sensor : `boolean`
             True if the irradiance sensor is attached to the device, False otherwise.
-        """
+    """
+    def __init__(self):
         self.config = Configuration()
         self.config.set_config()
         super().__init__(
@@ -150,12 +149,12 @@ class SkyScanner(Controller):
 
     def scan(self):
         """
-        takes a photo from sky and assigns a name (timestamp) and a path to it.
+        Takes a photo from sky and assigns a name (timestamp) and a path to it.
 
         Returns
         -------
         `(str, str, numpy.array)`
-            a tuple of name (timestamp), path and image array.
+            a tuple of name (timestamp), path and the corresponding image array.
         """
         # store the current time according to the time format
         cap_time = self.stamp_curr_time(self.config.time_format)
@@ -168,7 +167,7 @@ class SkyScanner(Controller):
 
     def preprocess(self, image_arr):
         """
-        crops and masks the taken image from sky.
+        Crops and masks the taken image from sky.
 
         Parameters
         ----------
@@ -187,8 +186,8 @@ class SkyScanner(Controller):
 
     def execute(self):
         """
-        takes a picture from sky, preprocesses it and tries to upload it to the server. if failed, it puts
-        the image array in `upload_stack`.
+        Takes a picture from sky, pre-processes it and tries to upload it to the server. if failed, it puts
+        the image array and its metadata in `upload_stack`.
         """
         # capture the image and set the proper name and path for it
         cap_time, img_path, img_arr = self.scan()
@@ -205,7 +204,7 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=10)
     def execute_and_store(self):
         """
-        takes a picture from sky, preprocesses it and stores it in `storage_path` directory recurrently
+        Recurrently takes a picture from sky, pre-processes it and stores it in `storage_path` directory
         during the daytime.
         """
         if self.daytime:
@@ -220,11 +219,11 @@ class SkyScanner(Controller):
             except Exception:
                 self.logger.error('Couldn\'t write {}.jpg in storage!'.format(cap_time), exc_info=True)
 
-    @loop_infinitely(time_gap=60)
+    @loop_infinitely(time_gap=3600)
     def send_thumbnail(self):
         """
-        takes a picture from sky, preprocesses it, makes thumbnail out of the image array and tries to upload
-        it recurrently during the daytime.
+        Recurrently takes a picture from sky, pre-processes it and makes a thumbnail out of the image array.
+        Then it tries to upload it during the daytime every hour.
         """
         if self.daytime:
             # capture the image and set the proper name and path for it
@@ -243,12 +242,12 @@ class SkyScanner(Controller):
     @retry_on_failure(attempts=2)
     def retry_uploading_image(self, image, time_stamp):
         """
-        retries to upload a given image for a given number of attempts passed through the decorator.
+        Retries to upload a given image for a given number of attempts passed through the decorator.
 
         Parameters
         ----------
         image : `numpy.array` or `str`
-            the image array of a given image or the path to it if written on the disk
+            the image array of a given image or the path to it if written on the disk.
         time_stamp : `datetime`
             the timestamp of the `image`
         """
@@ -257,7 +256,7 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=10)
     def execute_periodically(self):
         """
-        takes a picture from sky, preprocesses it and tries to upload it to the server recurrently
+        Recurrently takes a picture from sky and pre-processes it. Then it tries to upload it to the server
         during the daytime. if failed, it puts the image array in `upload_stack`.
         """
         if self.daytime:
@@ -269,7 +268,8 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=False)
     def check_upload_stack(self):
         """
-        checks the `upload_stack` every 5 seconds to retry to upload the failed uploaded images.
+        Checks the `upload_stack` every 5 seconds to retry uploading the images that were not successfully
+        uploaded to the server.
         """
         if not self.upload_stack.empty():
             cap_time, img_path, img_arr = self.upload_stack.get()
@@ -289,7 +289,7 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=False)
     def check_write_stack(self):
         """
-        checks the `write_stack` every 5 seconds to write the failed images on the disk.
+        Checks the `write_stack` every 5 seconds to save the images waiting in `write_stack' in `storage_path`.
         """
         if not self.write_stack.empty():
             cap_time, img_path, img_arr = self.write_stack.get()
@@ -307,7 +307,8 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=False)
     def check_disk(self):
         """
-        check the disk every 10 seconds to try to upload the stored images, if failed wait 30 seconds.
+        Checks the `storage_path` every 10 seconds to try uploading the stored images. If it failed, waits
+        another 30 seconds.
         """
         if len(os.listdir(self.storage_path)) == 0:
             time.sleep(10)
@@ -328,7 +329,7 @@ class SkyScanner(Controller):
 
     def do_sunrise_operations(self):
         """
-        once it's sunrise, set `daytime` attribute to True and send a sms text reporting the device status.
+        Once it's sunrise, sets `daytime` attribute to True and sends a sms text reporting the device status.
         """
         if not self.daytime:
             self.logger.info('It\'s daytime!')
@@ -345,8 +346,8 @@ class SkyScanner(Controller):
 
     def do_sunset_operations(self):
         """
-        once it's sunset, set `daytime` attribute to False and send a sms text reporting the device status
-        and compress the stored images if any exists in `storage_path`.
+        Once it's sunset, sets `daytime` attribute to False and sends a sms text reporting the device status.
+        If there's any image stored in `storage_path`, it would compress them.
         """
         if self.daytime:
             self.logger.info('Daytime is over!')
@@ -367,7 +368,7 @@ class SkyScanner(Controller):
     @loop_infinitely(time_gap=30)
     def watch_time(self):
         """
-        check the time recurrently to start/stop the uploading and photo capturing operations.
+        Recurrently checks the time to start/stop the executing operations.
         """
         curr_time = dt.datetime.utcnow()
 
@@ -385,7 +386,8 @@ class SkyScanner(Controller):
 
     def run_offline(self):
         """
-        Running the operations in multiple threads recurrently in offline mode.
+        Concurrently Runs the watching, writing and thumbnailUploading operations recurrently
+        in multiple threads in offline mode.
         """
         try:
             jobs = []
@@ -405,7 +407,8 @@ class SkyScanner(Controller):
 
     def run_online(self):
         """
-        Running the operations in multiple threads recurrently in online mode.
+        Concurrently Runs the watching, writing and thumbnailUploading operations recurrently
+        in multiple threads in online mode.
         """
         try:
             jobs = []
