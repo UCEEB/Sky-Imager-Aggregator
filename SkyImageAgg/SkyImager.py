@@ -107,7 +107,7 @@ class SkyScanner(Controller):
     log_dir : `str`
         the path to the directory that the logs are stored.
     log_stream : `boolean`
-        True if logs are needed to be streams to the console, False otherwise (silent).
+        True if logs are needed to be streamed to the console, False otherwise (silent).
     irradiance_sensor : `boolean`
         True if the irradiance sensor is attached to the device, False otherwise.
     """
@@ -178,6 +178,7 @@ class SkyScanner(Controller):
         `numpy.array`
         """
         # Crop
+        # FIXME
         if not image_arr.shape == (1920, 1920):
             image_arr = self.crop(image_arr, self.config.crop_dim)
         # Apply mask
