@@ -388,7 +388,7 @@ class SkyScanner(Controller):
     def run_offline(self):
         """
         Concurrently Runs the watching, writing and thumbnail-uploading operations recurrently in multiple threads
-         in offline mode.
+         in offline mode. (data collection mode)
         """
         try:
             jobs = []
@@ -435,6 +435,9 @@ class SkyScanner(Controller):
             self.logger.exception('Sky Scanner has stopped working!', exc_info=True)
 
     def main(self):
+        """
+        It runs the device in offline mode if autonomous mode is True, otherwise it runs it in offline mode.
+        """
         if self.config.autonomous_mode:
             self.run_offline()
         else:
