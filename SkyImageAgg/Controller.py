@@ -148,7 +148,7 @@ class TimeManager(Logger):
     @staticmethod
     def get_twilight_times_by_day(day_of_year):
         """
-        Gets the sunrise/sunset times collected previously given the day order in the year.
+        Gets the sunrise/sunset times collected previously given the day of the year.
 
         Parameters
         ----------
@@ -183,6 +183,71 @@ class TimeManager(Logger):
 
 
 class Controller(TimeManager, ImageProcessor):
+    """
+    A class responsible for performing IO and network operations. It inherits properties from `TimeManager` and
+    `ImageProcessor` to pass their methods and attributes to its children such as `SkyScanner`.
+
+    Attributes
+    ----------
+    cam_id : `int`
+    image_quality : `int`
+    key : `str`
+    server : `str`
+    time_format : `str`
+    storage_path : `str`
+    cam : `Collector.GeoVisionCam` or `Collector.RpiCam`
+
+    Parameters
+    ----------
+    server : `str`
+        the server that receives the photos taken from sky to perform further processing.
+    camera_id : `int`
+        the camera ID assigned by the vendor.
+    camera_latitude : `float`
+        latitude of the camera.
+    camera_longitude : `float`
+        longitude of the camera.
+    camera_altitude : `float`
+        the altitude of the camera.
+    image_quality : `int`
+        the desired jpeg quality for the taken image.
+    auth_key : `str`
+        the SHA-256 key provided by the vendor.
+    storage_path : `str`
+        the path to the storage directory.
+    ext_storage_path : `str`
+        the path to the external storage directory.
+    time_format : `str`
+        the time format.
+    autonomous_mode : `boolean`
+        True if the device is in offline mode, False otherwise (default is False).
+    cam_address : `str`
+        IP camera address.
+    username : `str`
+        IP camera username.
+    pwd : `str`
+        IP camera password.
+    rpi_cam : `boolean`
+        True if raspberry pi camera is used (default is False).
+    log_dir : `str`
+        the path to the directory that the logs are stored.
+    log_stream : `boolean`
+        True if logs are needed to be streamed to the console, False otherwise (silent).
+    irradiance_sensor : `boolean`
+        True if the irradiance sensor is attached to the device, False otherwise (default is False).
+    sensor_port : `str`
+        the port used for connecting the irradiance sensor to the device (default is None).
+    sensor_address : `int`
+        address of irradiance sensor (default is None).
+    sensor_baudrate : `int`
+        data transfer rate (default is None).
+    sensor_bytesize : `int`
+        the byte size of transferring data from sensor (default is None).
+    sensor_pairity : `str`
+        the sensor pairity (default is None).
+    sensor_stopbits : `int`
+        the sensor stopbits (default is None).
+    """
     def __init__(
             self,
             server,
