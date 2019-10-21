@@ -25,6 +25,32 @@ _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
 
 class TimeManager(Logger):
+    """
+    A class responsible to manage the time resources. `TimeManager` also inherits properties from `Logger` to pass
+    a logger object to its child class `Controller`.
+
+    Attributes
+    ----------
+    latitude : `float`
+        the camera latitude
+    longitude : `float`
+        the camera longitude
+    altitude : `float`
+        the camera altitude
+
+    Parameters
+    ----------
+    latitude : `float`
+        the camera latitude
+    longitude : `float`
+        the camera longitude
+    altitude : `float`
+        the camera altitude
+    log_dir: `str`
+        the path to the log directory (default is None, storing no logs)
+    stream: `boolean`
+        True if the logs are to be stream on the console (default is True)
+    """
     def __init__(
             self,
             camera_latitude,
@@ -41,9 +67,36 @@ class TimeManager(Logger):
 
     @staticmethod
     def sync_time(ntp_server):
+        """
+        Synchronizes device time with UTC.
+
+        Parameters
+        ----------
+        ntp_server : `str`
+            the NTP server address
+
+        Notes
+        -----
+            You need to install ntpd package on your device.
+            see:
+            https://raspberrytips.com/time-sync-raspberry-pi/
+        """
         os.system('sudo /usr/sbin/ntpd {}'.format(ntp_server))
 
     def find_sunrise_and_sunset_time(self, date=None):
+        """
+        Finds the sunrise and sunset time of a given date.
+
+        Parameters
+        ----------
+        date : `datetime`
+            the date (default is None, which will take the current date)
+
+        Returns
+        -------
+        tuple of twilight times : `(datetime.time, datetime.time)`
+            sunrise and sunset times
+        """
         if not date:
             date = dt.datetime.now(dt.timezone.utc).date()
 
@@ -62,6 +115,14 @@ class TimeManager(Logger):
         return sun['sunrise'].time(), sun['sunset'].time()
 
     def collect_annual_twilight_times(self):
+        """
+        Collects the annual sunrise/sunset times with respect to the location of the camera.
+
+        Returns
+        -------
+        annual twilight times : `dict`
+            a dictionary with day order as its keys and tuple of twilight times as its values
+        """
         collection = {
             'geo_loc': (self.latitude,
                         self.longitude)
@@ -85,13 +146,39 @@ class TimeManager(Logger):
         return collection
 
     @staticmethod
-    def get_twilight_times_by_day(day_no):
+    def get_twilight_times_by_day(day_of_year):
+        """
+        Gets the sunrise/sunset times collected previously given the day order in the year.
+
+        Parameters
+        ----------
+        day_of_year : `int`
+            The day of year (DOY) is the sequential day number starting with day 1 on January 1st.
+
+        Returns
+        -------
+        tuple of twilight times : `(datetime.time, datetime.time)`
+            sunrise and sunset times
+        """
         with open(os.path.join(_parent_dir_, 'annual_twilight_times.pkl'), 'rb') as handle:
             col = pickle.load(handle)
-        return col[day_no]
+        return col[day_of_year]
 
     @staticmethod
     def stamp_curr_time(time_format):
+        """
+        Gets the current time based on the specified format.
+
+        Parameters
+        ----------
+        time_format : `str`
+            the strftime format
+
+        Returns
+        -------
+        current time : `datetime.time`
+            the current time specified in `time_format`
+        """
         return dt.datetime.utcnow().strftime(time_format)
 
 
