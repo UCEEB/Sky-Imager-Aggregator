@@ -298,7 +298,7 @@ class Controller(TimeManager, ImageProcessor):
                 )
             self.cam_id = camera_id
             self.image_quality = image_quality
-            self.key = auth_key
+            self.key = bytes(auth_key, 'ascii')
             self.server = server
             self.time_format = time_format
             if autonomous_mode:
@@ -314,10 +314,39 @@ class Controller(TimeManager, ImageProcessor):
 
     @staticmethod
     def _encrypt_data(key, message):
+        """
+        Encrypts the given data/message using SHA-256 key.
+
+        Parameters
+        ----------
+        key : `bytes`
+            provided secret key
+        message : `str`
+            message that is intended to be hashed
+
+        Returns
+        -------
+        hashed data : `str`
+            the encrypted data
+        """
         return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
 
     @staticmethod
     def _send_post_request(url, data):
+        """
+        Sends a post request to a given server/url
+
+        Parameters
+        ----------
+        url : `str`
+            server's url
+        data : `str`
+            data to be sent
+
+        Returns
+        -------
+        http response : `dict`
+        """
         post_data = {
             'data': data
         }
@@ -325,13 +354,56 @@ class Controller(TimeManager, ImageProcessor):
 
     @staticmethod
     def _get_file_timestamp(file):
+        """
+        Gets the latest date that the file was modified.
+
+        Parameters
+        ----------
+        file : `str`
+            path to the file
+
+        Returns
+        -------
+        modification date : `datetime`
+            the date that the file was modified.
+        """
         return datetime.fromtimestamp(os.path.getmtime(file))
 
     def _get_file_datetime_as_string(self, file, datetime_format):
+        """
+        Gets the file modification date in a given format as a string
+
+        Parameters
+        ----------
+        file : `str`
+            path to the file
+        datetime_format : `str`
+            date format in strftime
+
+        Returns
+        -------
+        date : `str`
+            modification date as a `str`
+        """
         return self._get_file_timestamp(file).strftime(datetime_format)
 
     def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
+        """
+        Makes a json out of the encoded image and its metadata.
+
+        Parameters
+        ----------
+        image : `str` or `numpy.array`
+            path to the image or a numpy array of the image
+        time_stamp : `datetime`
+            the timestamp of the image (default is current time as `datetime.utcnow`)
+
+        Returns
+        -------
+        json data : `str`
+        """
         if isinstance(image, str):
+            # if it's a file path, convert the stored image to a numpy array
             image = self.make_array_from_image(image)
 
         image = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), self.image_quality])[1]
@@ -345,6 +417,16 @@ class Controller(TimeManager, ImageProcessor):
         return json.dumps(data)
 
     def _upload_to_server(self, image, time_stamp=datetime.utcnow()):
+        """
+        Uploads the image to the server.
+
+        Parameters
+        ----------
+        image : `str` or `numpy.array`
+            path to the image or a numpy array of the image
+        time_stamp : `datetime`
+            the timestamp of the image (default is current time as `datetime.utcnow`)
+        """
         json_data = self._make_json_from_image(image, time_stamp)
         signature = self._encrypt_data(self.key, json_data)
         try:
@@ -359,6 +441,20 @@ class Controller(TimeManager, ImageProcessor):
             raise ConnectionError
 
     def upload_as_bson(self, file, server):
+        """
+        Uploads file as binary json.
+
+        Parameters
+        ----------
+        file : `str`
+            path to the file
+        server : `str`
+            server address
+
+        Returns
+        -------
+        http response : `str`
+        """
         data = {
             "status": "ok",
             "id": self.cam_id,
@@ -389,22 +485,63 @@ class Controller(TimeManager, ImageProcessor):
 
     @timeout(60, timeout_exception=TimeoutError, use_signals=False)
     def upload_thumbnail(self, thumbnail, time_stamp=datetime.utcnow()):
+        """
+        Uploads a thumbnail to the server with a timeout limit.
+
+        Parameters
+        ----------
+        thumbnail : `str` or `numpy.array`
+            path to the thumbnail or a numpy array of the thumbnail
+        time_stamp : `datetime`
+            the timestamp of the image (default is current time as `datetime.utcnow`)
+        """
         self._upload_to_server(thumbnail, time_stamp=time_stamp)
 
     @timeout(6, timeout_exception=TimeoutError, use_signals=False)
     def upload_image(self, image, time_stamp=datetime.utcnow()):
+        """
+        Uploads the image to the server with a timeout limit.
+
+        Parameters
+        ----------
+        image : `str` or `numpy.array`
+            path to the image or a numpy array of the image
+        time_stamp : `datetime`
+            the timestamp of the image (default is current time as `datetime.utcnow`)
+        """
         self._upload_to_server(image, time_stamp=time_stamp)
 
     @timeout(60, timeout_exception=TimeoutError, use_signals=False)
     def upload_logfile(self, log_file, server):
+        """
+        Uploads the logfile to the server with a timeout limit.
+
+        Parameters
+        ----------
+        log_file : `str`
+            path to the logfile
+        server : `str`
+            server address
+        """
         self.logger.debug('Start upload log to server')
         self.upload_as_bson(log_file, server=server)
 
     def get_available_free_space(self):
+        """
+        Get the available space in the `storage_path`
+
+        Returns
+        -------
+        available space : `float`
+            available space in GB
+        """
         free_space = shutil.disk_usage(self.storage_path)[2]
         return round(free_space / 2**30, 1)
 
     def compress_storage(self):
+        """
+        Compresses all the jpeg images in `storage_path` and saves them in the same directory.
+        """
         zip_archive = '{}.zip'.format(self.stamp_curr_time(self.time_format))
         try:
             with zipfile.ZipFile(os.path.join(self.storage_path, zip_archive), 'w') as zf:
@@ -416,6 +553,16 @@ class Controller(TimeManager, ImageProcessor):
 
     # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
+        """
+        Writes the data received from the irradiance sensor onto the disk.
+
+        Parameters
+        ----------
+        time
+        irradiance
+        ext_temperature
+        cell_temperature
+        """
         try:
             with open(os.path.join(path, self.config.MODBUS_csv_name), 'a', newline='') as handle:
                 csv_file = csv.writer(handle, delimiter=';', quotechar='\'', quoting=csv.QUOTE_MINIMAL)
