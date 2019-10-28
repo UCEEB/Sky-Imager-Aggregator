@@ -48,30 +48,6 @@ class ImageProcessor:
         else:
             return cv2.imread(image)
 
-    def apply_mask(self, image, mask_path, resize=True):
-        """Applies a mask to the image to exclude the non-sky regions
-
-        Args:
-            image: str
-                path to the image
-            resize: bool, optional
-                if True(default), the function will resize the mask to fit the specified image
-
-        Returns
-        -------
-        numpy.ndarray
-            the matrix of the masked image
-        """
-        img = self.load_image(image)
-        if resize:
-            mask = cv2.resize(
-                self.load_image(mask_path),
-                img.shape[1::-1]
-            )
-        else:
-            mask = self.load_image(mask_path)
-        return cv2.bitwise_and(img, mask)
-
     @staticmethod
     def save_as_pic(image_arr, output_name):
         """
@@ -98,6 +74,19 @@ class ImageProcessor:
         if not os.path.isfile(image_path):
             raise FileNotFoundError('{} doesn\'t exist!'.format(image_path))
         return np.where(cv2.imread(image_path) == 255, 1, 0)
+
+    def apply_binary_mask(self, image_arr):
+        """
+
+        Parameters
+        ----------
+        image_arr
+
+        Returns
+        -------
+
+        """
+        return np.multiply(self.mask, image_arr)
 
     @staticmethod
     def apply_binary_mask(bin_mask_arr, image_arr):
