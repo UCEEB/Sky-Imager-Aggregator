@@ -20,43 +20,47 @@ from SkyImageAgg.Collectors.GeoVisionCam import GeoVisionCam as IPCamera
 
 _parent_dir_ = dirname(dirname(__file__))
 
-def loop_infinitely(time_gap=3):
-    """
-    A decorator to transform functions into a recurrent function executed on a timely basis.
 
-    Parameters
+class SkyScanner(Controller, ImageProcessor):
+    """
+    Captures pictures from sky and stores locally or uploads them to a remote server.
+
+    SkyScanner  coordinates different  other classes such as Controller  and  ImageProcessor by  inheriting  their
+    properties. This class calls the Configuration class to initialize an instance using Configuration attributes.
+    Next, It collects data by means of the modules in the Collectors package including RpiCam and  other available
+    cameras and sensors.  Using  ImageProcessor, it preprocesses  the image data  collected by camera  and  stores
+    them locally or uploads it to the server. The class can be run in  two modes, online  and offline. The  online
+    mode is run when the device is required to upload the data into a server and the offline mode is used when the
+    data need  to be stored locally for data collection purposes.
+
+    Attributes
     ----------
-    time_gap : `int`
-        the time gap between each execution (default is 3)
-
-    Returns
-    -------
-    `function`
-        the recurring function that is decorated
+    config : `Configuration`
+        an instance of `Configuration` class for calling the configuration variables from config.ini.
+    logger : `logging`
+        an instance of `logging` to log the events throughout the class.
+    cam : `IPCamera` or `RPiCam`
+        an instance of `Collectors.Cam` for capturing images.
+    irr_sensor : `IrrSensor`
+        an instance of `Collectors.IrradianceSensor.IrrSensor` to collect irradiance data.
+    messenger : `Messenger`
+        an instance of `Messenger` class for sending sms texts.
+    gprs : `GPRS`
+        an instance of `GPRS` class for connecting the device to internet through GPRS service.
+    upload_stack : `LifoQueue`
+        a LIFO stack for storing failed uploads to be accessible by uploader thread.
+    write_stack : `LifoQueue`
+        a LIFO stack for queuing failed re-uploads to be written on the disk by writer thread.
+    day_of_year : `int`
+        the day of year (DOY) is the sequential day number starting with day 1 on January 1st.
+    sunrise : `datetime.time`
+        sunrise time.
+    sunset : `datetime.time`
+        sunset time.
+    daytime : `boolean`
+        True if daytime, false otherwise.
     """
-    def deco_retry(f):
-        def f_retry(*args, **kwargs):
-            while True:
-                kick_off = time.time()
-                if time_gap:
-                    f(*args, **kwargs)
-                    try:
-                        wait = time_gap - (time.time() - kick_off)
-                        time.sleep(wait)
-                    except ValueError:
-                        pass
-                else:
-                    f(*args, **kwargs)
-
-        return f_retry
-
-    return deco_retry
-
-
-class SkyScanner(Controller):
-    """
-    A class responsible for running methods inherited from `Controller` in multiple threads. It manages the
-    time and other available resources in a recurring fashion.
+    config = Configuration(config_file=join(_parent_dir_, 'config.ini'))
 
     Attributes
     ----------
