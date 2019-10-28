@@ -24,46 +24,43 @@ from SkyImageAgg.Logger import Logger
 _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
 
-class TimeManager(Logger):
+class TwilightCalc:
     """
-    A class responsible to manage the time resources. `TimeManager` also inherits properties from `Logger` to pass
-    a logger object to its child class `Controller`.
+    A class responsible to manage the twilight times with respect to the geolocation..
 
     Attributes
     ----------
     latitude : `float`
-        the camera latitude
+        location latitude
     longitude : `float`
-        the camera longitude
+        location longitude
     altitude : `float`
-        the camera altitude
+        location altitude
+    logger : ``
 
     Parameters
     ----------
     latitude : `float`
-        the camera latitude
+        location latitude
     longitude : `float`
-        the camera longitude
+        location longitude
     altitude : `float`
-        the camera altitude
-    log_dir: `str`
-        the path to the log directory (default is None, storing no logs)
-    stream: `boolean`
-        True if the logs are to be stream on the console (default is True)
+        location altitude
+    logger : ``
     """
-    def __init__(
-            self,
-            camera_latitude,
-            camera_longitude,
-            camera_altitude,
-            log_dir=None,
-            stream=True
-    ):
-        super().__init__()
-        self.set_logger(log_dir=log_dir, stream=stream)
-        self.latitude = camera_latitude
-        self.longitude = camera_longitude
-        self.altitude = camera_altitude
+
+    def __init__(self, latitude, longitude, altitude, logger=None):
+        self.latitude = latitude
+        self.longitude = longitude
+        self.altitude = altitude
+        if logger:
+            self._logger = logger
+        else:
+            self._logger = Utilities.set_logger()
+
+        if not exists(join(_parent_dir_, 'twilight_times.pkl')):
+            if self.is_location_changed():
+                self.collect_annual_twilight_times()
 
     @staticmethod
     def sync_time(ntp_server):
@@ -123,9 +120,9 @@ class TimeManager(Logger):
         annual twilight times : `dict`
             a dictionary with day order as its keys and tuple of twilight times as its values
         """
-        collection = {
-            'geo_loc': (self.latitude,
-                        self.longitude)
+        coll = {  # storing location coordinates as -1 as its key in the collection
+            -1: (self.latitude,
+                 self.longitude)
         }
 
         dates = np.arange(
@@ -135,15 +132,13 @@ class TimeManager(Logger):
             dt.timedelta(days=1)
         ).astype(dt.datetime).tolist()
 
-        self.logger.info('Collecting annual twilight times...')
-
         for date in dates:
-            collection[date.timetuple().tm_yday] = self.find_sunrise_and_sunset_time(date=date)
+            coll[date.timetuple().tm_yday] = self.find_sunrise_and_sunset_time(date=date)
 
-        with open(os.path.join(_parent_dir_, 'annual_twilight_times.pkl'), 'wb') as file:
-            pickle.dump(collection, file, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(join(_parent_dir_, 'twilight_times.pkl'), 'wb') as f:
+            pickle.dump(coll, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        return collection
+        return coll
 
     @staticmethod
     def get_twilight_times_by_day(day_of_year):
@@ -160,7 +155,7 @@ class TimeManager(Logger):
         tuple of twilight times : `(datetime.time, datetime.time)`
             sunrise and sunset times
         """
-        with open(os.path.join(_parent_dir_, 'annual_twilight_times.pkl'), 'rb') as handle:
+        with open(join(_parent_dir_, 'twilight_times.pkl'), 'rb') as handle:
             col = pickle.load(handle)
         return col[day_of_year]
 
