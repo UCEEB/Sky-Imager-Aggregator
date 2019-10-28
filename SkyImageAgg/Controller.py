@@ -172,15 +172,15 @@ class TwilightCalc:
             return True
 
 
-class Controller(TimeManager, ImageProcessor):
+class Controller(TwilightCalc):
     """
     A class responsible for performing IO and network operations. It inherits properties from `TimeManager` and
     `ImageProcessor` to pass their methods and attributes to its children such as `SkyScanner`.
 
     Attributes
     ----------
-    cam_id : `int`
-    image_quality : `int`
+    client_id : `int`
+    jpeg_quality : `int`
     key : `str`
     server : `str`
     time_format : `str`
@@ -191,16 +191,18 @@ class Controller(TimeManager, ImageProcessor):
     ----------
     server : `str`
         the server that receives the photos taken from sky to perform further processing.
-    camera_id : `int`
+    client_id : `int`
         the camera ID assigned by the vendor.
-    camera_latitude : `float`
+    latitude : `float`
         latitude of the camera.
-    camera_longitude : `float`
+    longitude : `float`
         longitude of the camera.
-    camera_altitude : `float`
+    altitude : `float`
         the altitude of the camera.
-    image_quality : `int`
+    jpeg_quality : `int`
         the desired jpeg quality for the taken image.
+    mask_path : `str`
+        path to mask image.
     auth_key : `str`
         the SHA-256 key provided by the vendor.
     storage_path : `str`
@@ -238,69 +240,32 @@ class Controller(TimeManager, ImageProcessor):
     sensor_stopbits : `int`
         the sensor stopbits (default is None).
     """
+
     def __init__(
             self,
             server,
-            camera_id,
-            camera_latitude,
-            camera_longitude,
-            camera_altitude,
-            image_quality,
+            client_id,
+            latitude,
+            longitude,
+            altitude,
             auth_key,
             storage_path,
-            ext_storage_path,
             time_format,
-            log_dir=None,
-            log_stream=True,
-            autonomous_mode=False,
-            cam_address=None,
-            username=None,
-            pwd=None,
-            rpi_cam=False,
-            irradiance_sensor=False,
-            sensor_port=None,
-            sensor_address=None,
-            sensor_baudrate=None,
-            sensor_bytesize=None,
-            sensor_parity=None,
-            sensor_stopbits=None
+            logger,
+            ext_storage_path=None
     ):
         super().__init__(
-            camera_latitude=camera_latitude,
-            camera_longitude=camera_longitude,
-            camera_altitude=camera_altitude,
-            stream=log_stream,
-            log_dir=log_dir
+            latitude=latitude,
+            longitude=longitude,
+            altitude=altitude,
+            logger=logger
         )
-        try:
-            if not os.path.exists(os.path.join(_parent_dir_, 'annual_twilight_times.pkl')):
-                self.collect_annual_twilight_times()
-
-            if irradiance_sensor:
-                self.light_sensor = IrrSensor()
-                self.set_sensor(
-                    port=sensor_port,
-                    address=sensor_address,
-                    baudrate=sensor_baudrate,
-                    bytesize=sensor_bytesize,
-                    parity=sensor_parity,
-                    stopbits=sensor_stopbits
-                )
-            self.cam_id = camera_id
-            self.image_quality = image_quality
-            self.key = bytes(auth_key, 'ascii')
-            self.server = server
-            self.time_format = time_format
-            if autonomous_mode:
-                self.storage_path = ext_storage_path
-            else:
-                self.storage_path = storage_path
-            if rpi_cam:
-                self.cam = RPiCam()
-            else:
-                self.cam = GeoVisionCam(cam_address, username, pwd)
-        except Exception as e:
-            self.logger.exception(e)
+        self.client_id = client_id
+        self.key = bytes(auth_key, 'ascii')
+        self.server = server
+        self.time_format = time_format
+        self.storage_path = storage_path
+        self.ext_storage_path = ext_storage_path
 
     @staticmethod
     def _encrypt_data(key, message):
@@ -341,6 +306,23 @@ class Controller(TimeManager, ImageProcessor):
             'data': data
         }
         return requests.post(url, data=post_data)
+
+    @staticmethod
+    def stamp_curr_time(time_format):
+        """
+        Gets the current time based on the specified format.
+
+        Parameters
+        ----------
+        time_format : `str`
+            the strftime format
+
+        Returns
+        -------
+        current time : `datetime.time`
+            the current time specified in `time_format`
+        """
+        return dt.datetime.utcnow().strftime(time_format)
 
     @staticmethod
     def _get_file_timestamp(file):
@@ -385,7 +367,7 @@ class Controller(TimeManager, ImageProcessor):
         ----------
         image : `str` or `numpy.array`
             path to the image or a numpy array of the image
-        time_stamp : `datetime`
+        time_stamp : `datetime.time`
             the timestamp of the image (default is current time as `datetime.utcnow`)
 
         Returns
@@ -396,10 +378,10 @@ class Controller(TimeManager, ImageProcessor):
             # if it's a file path, convert the stored image to a numpy array
             image = self.make_array_from_image(image)
 
-        image = cv2.imencode('.jpg', image, [int(cv2.IMWRITE_JPEG_QUALITY), self.image_quality])[1]
+        image = self.encode_image(image_arr=image)
         data = {
             'status': 'ok',
-            'id': self.cam_id,
+            'id': self.client_id,
             'time': time_stamp,
             'coding': 'Base64',
             'data': base64.b64encode(image).decode('ascii')
@@ -427,7 +409,7 @@ class Controller(TimeManager, ImageProcessor):
                 raise ConnectionError(json_response['message'])
 
         except Exception as e:
-            self.logger.exception(e)
+            self._logger.exception(e)
             raise ConnectionError
 
     def upload_as_bson(self, file, server):
@@ -447,7 +429,7 @@ class Controller(TimeManager, ImageProcessor):
         """
         data = {
             "status": "ok",
-            "id": self.cam_id,
+            "id": self.client_id,
             "time": self._get_file_datetime_as_string(file, self.time_format),
             "coding": "none"
         }
@@ -482,7 +464,7 @@ class Controller(TimeManager, ImageProcessor):
         ----------
         thumbnail : `str` or `numpy.array`
             path to the thumbnail or a numpy array of the thumbnail
-        time_stamp : `datetime`
+        time_stamp : `datetime.time`
             the timestamp of the image (default is current time as `datetime.utcnow`)
         """
         self._upload_to_server(thumbnail, time_stamp=time_stamp)
@@ -496,7 +478,7 @@ class Controller(TimeManager, ImageProcessor):
         ----------
         image : `str` or `numpy.array`
             path to the image or a numpy array of the image
-        time_stamp : `datetime`
+        time_stamp : `datetime.time`
             the timestamp of the image (default is current time as `datetime.utcnow`)
         """
         self._upload_to_server(image, time_stamp=time_stamp)
@@ -513,7 +495,7 @@ class Controller(TimeManager, ImageProcessor):
         server : `str`
             server address
         """
-        self.logger.debug('Start upload log to server')
+        self._logger.debug('Start upload log to server')
         self.upload_as_bson(log_file, server=server)
 
     def get_available_free_space(self):
@@ -526,7 +508,7 @@ class Controller(TimeManager, ImageProcessor):
             available space in GB
         """
         free_space = shutil.disk_usage(self.storage_path)[2]
-        return round(free_space / 2**30, 1)
+        return round(free_space / 2 ** 30, 1)
 
     def compress_storage(self):
         """
@@ -535,11 +517,11 @@ class Controller(TimeManager, ImageProcessor):
         zip_archive = '{}.zip'.format(self.stamp_curr_time(self.time_format))
         try:
             with zipfile.ZipFile(os.path.join(self.storage_path, zip_archive), 'w') as zf:
-                self.logger.debug('Compressing the images in the storage...')
+                self._logger.debug('Compressing the images in the storage...')
                 for file in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
                     zf.write(filename=file)
         except Exception as e:
-            self.logger.exception(e)
+            self._logger.exception(e)
 
     # todo check function
     def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
@@ -563,8 +545,7 @@ class Controller(TimeManager, ImageProcessor):
                     csv_file.writerow([time, irradiance])
 
         except Exception as e:
-            self.logger.error('csv save to local storage error : ' + str(e))
+            self._logger.error('csv save to local storage error : ' + str(e))
         else:
-            self.logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
-            self.logger.info('irradiance saved ' + str(irradiance))
-
+            self._logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
+            self._logger.info('irradiance saved ' + str(irradiance))
