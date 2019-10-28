@@ -89,17 +89,39 @@ class ImageProcessor:
         return np.multiply(self.mask, image_arr)
 
     @staticmethod
-    def apply_binary_mask(bin_mask_arr, image_arr):
-        return np.multiply(bin_mask_arr, image_arr)
+    def get_crop_size(image_arr, output_size):
+        """
 
-    @staticmethod
-    def crop(image_arr, crop):
-        return image_arr[crop[1]:crop[1] + crop[3], crop[0]:crop[0] + crop[2]]
+        Parameters
+        ----------
+        image_arr
+        output_size
+        """
+        w = image_arr.shape[1]
+        w_delta = int((w - output_size[1]) / 2)
+        h = image_arr.shape[0]
+        h_delta = int((h - output_size[0]) / 2)
 
-    # TODO
-    @staticmethod
-    def apply_custom_processing(image):
-        return image
+        if h_delta < 0 or w_delta < 0:
+            raise ValueError('Crop dimensions cannot be larger that the input image!')
+
+        return h_delta, h_delta + output_size[0], w_delta, w_delta + output_size[1]
+
+    def crop(self, image_arr):
+        """
+
+        Parameters
+        ----------
+        image_arr
+
+        Returns
+        -------
+
+        """
+        return image_arr[
+               self.crop_size[0]:self.crop_size[1],
+               self.crop_size[2]:self.crop_size[3]
+               ]
 
     @staticmethod
     def make_array_from_image(image_path):
