@@ -1,4 +1,5 @@
 import os
+from os.path import exists, join
 import base64
 import json
 import hmac
@@ -12,14 +13,11 @@ import datetime as dt
 from datetime import datetime
 
 import requests
-import cv2
 from timeout_decorator import timeout
 import numpy as np
 from astral import Astral, Location
 
-from SkyImageAgg.Processor import ImageProcessor
-from SkyImageAgg.Collector import GeoVisionCam, RPiCam, IrrSensor
-from SkyImageAgg.Logger import Logger
+from SkyImageAgg.Utilities import Utilities
 
 _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
@@ -159,22 +157,19 @@ class TwilightCalc:
             col = pickle.load(handle)
         return col[day_of_year]
 
-    @staticmethod
-    def stamp_curr_time(time_format):
+    def is_location_changed(self):
         """
-        Gets the current time based on the specified format.
-
-        Parameters
-        ----------
-        time_format : `str`
-            the strftime format
+        Checks if the given location is different from the stored one in the existing twilight collection.
 
         Returns
         -------
-        current time : `datetime.time`
-            the current time specified in `time_format`
+        True if the location has changed, false otherwise : `boolean`
         """
-        return dt.datetime.utcnow().strftime(time_format)
+        try:
+            if self.get_twilight_times_by_day(-1) == (self.latitude, self.longitude):
+                return False
+        finally:
+            return True
 
 
 class Controller(TimeManager, ImageProcessor):
