@@ -5,6 +5,7 @@ class Configuration:
     """
 
     """
+
     def __init__(self, config_file):
         self.conf = configparser.ConfigParser()
         self.conf.read(config_file)
@@ -20,7 +21,6 @@ class Configuration:
         self.camera_latitude = self.conf.getfloat('SETTING', 'camera_latitude')
         self.camera_longitude = self.conf.getfloat('SETTING', 'camera_longitude')
         self.camera_altitude = self.conf.getfloat('SETTING', 'camera_altitude')
-        self.debug_mode = self.conf.getboolean('SETTING', 'debug_mode')
         self.time_format = self.conf.get('SETTING', 'filetime_format')
         self.night_mode = self.conf.getboolean('SETTING', 'night_mode')
         self.jpeg_quality = self.conf.getint('SETTING', 'jpeg_quality')
@@ -29,23 +29,18 @@ class Configuration:
         ]
         self.mask_path = self.conf.get('SETTING', 'mask_path')
         self.cap_mod = self.conf.getint('SETTING', 'cap_mod')
-        self.added_time = self.conf.getint('SETTING', 'added_time')
-        self.use_private_lib = self.conf.getboolean('SETTING', 'use_private_lib')
-        self.private_lib_name = self.conf.get('SETTING', 'private_lib_name')
-        self.client_id = self.conf.get('SETTING', 'camera_id')
+        self.client_id = self.conf.get('SETTING', 'client_id')
         self.key = self.conf.get('SETTING', 'sha256_key')
         self.ntp_server = self.conf.get('SETTING', 'ntp_server')
         self.autonomous_mode = self.conf.getboolean('SETTING', 'autonomous_mode')
         self.light_sensor = self.conf.getboolean('SETTING', 'light_sensor')
 
-        self.GSM_path_storage_usb1 = self.conf.get('GSM', 'path_storage_usb1')
-        self.GSM_path_storage_usb2 = self.conf.get('GSM', 'path_storage_usb2')
         self.GSM_port = self.conf.get('GSM', 'port')
         self.GSM_phone_no = self.conf.get('GSM', 'phone_no')
         self.GSM_send_thumbnail = self.conf.getboolean('GSM', 'send_thumbnail')
         self.GSM_thumbnail_size = self.conf.getint('GSM', 'thumbnail_size')
         self.GSM_thumbnail_upload_server = self.conf.get('GSM', 'thumbnail_upload_server')
-        self.GSM_thumbnail_upload_time_interval = self.conf.getint('GSM', 'thumbnail_upload_time_interval')
+        self.thumbnailing_time_gap = self.conf.getint('GSM', 'thumbnail_upload_time_interval')
         self.GSM_time_sync = self.conf.getboolean('GSM', 'time_sync')
         self.GSM_send_log = self.conf.getboolean('GSM', 'send_log')
         self.GSM_log_upload_server = self.conf.get('GSM', 'log_upload_server')
@@ -58,6 +53,3 @@ class Configuration:
         self.MODBUS_bytesize = self.conf.getint('MODBUS', 'bytesize')
         self.MODBUS_parity = self.conf.get('MODBUS', 'parity')
         self.MODBUS_stopbits = self.conf.getint('MODBUS', 'stopbits')
-        self.MODBUS_csv_name = self.conf.get('MODBUS', 'csv_name')
-
-
