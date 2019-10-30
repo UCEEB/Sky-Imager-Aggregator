@@ -133,7 +133,7 @@ class Utilities:
             def f_retry(*args, **kwargs):
                 while True:
                     kick_off = time.time()
-                    if time_gap:
+                    if time_gap != 0:
                         f(*args, **kwargs)
                         try:
                             wait = time_gap - (time.time() - kick_off)
