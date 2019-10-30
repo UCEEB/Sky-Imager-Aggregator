@@ -23,7 +23,7 @@ _parent_dir_ = dirname(dirname(__file__))
 
 class SkyScanner(Controller, ImageProcessor):
     """
-    Captures pictures from sky and stores locally or uploads them to a remote server.
+    Captures pictures from sky and stores them locally or uploads them to a remote server.
 
     SkyScanner  coordinates different  other classes such as Controller  and  ImageProcessor by  inheriting  their
     properties. This class calls the Configuration class to initialize an instance using Configuration attributes.
@@ -64,7 +64,7 @@ class SkyScanner(Controller, ImageProcessor):
 
     def __init__(self):
         """
-        Initializes an SkyScanner instance.
+        Initializes a SkyScanner instance.
         """
         self.logger = utils.set_logger(log_dir=self.config.log_path, stream=self.config.log_to_console)
         super().__init__(
@@ -79,12 +79,13 @@ class SkyScanner(Controller, ImageProcessor):
             time_format=self.config.time_format,
             logger=self.logger
         )
+        self.sync_time(self.config.ntp_server)
 
         if self.config.integrated_cam:
             self.cam = RPiCam()
         else:
-            self.cam = IPCamera(
-                self.config.cam_address,
+            self.cam = IPCamera(self.config.cam_address)
+            self.cam.login(
                 self.config.cam_username,
                 self.config.cam_pwd
             )
@@ -139,6 +140,7 @@ class SkyScanner(Controller, ImageProcessor):
         Returns
         -------
         `numpy.array`
+            proprocessed image array.
         """
         # Crop
         image_arr = self.crop(image_arr)
@@ -179,10 +181,10 @@ class SkyScanner(Controller, ImageProcessor):
                 self.save_as_pic(preproc_img, img_path)
                 self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
             except Exception:
-                self.logger.error('Couldn\'t write {}.jpg on storage!'.format(cap_time), exc_info=True)
+                self.logger.error('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=True)
 
     # FIXME
-    @utils.loop_infinitely(time_gap=10)
+    @utils.loop_infinitely(time_gap=config.thumbnailing_time_gap)
     def send_thumbnail(self):
         """
         Recurrently takes a picture from sky, pre-processes it and makes a thumbnail out of the image array.
@@ -190,21 +192,17 @@ class SkyScanner(Controller, ImageProcessor):
         """
         if self.daytime or self.config.night_mode:
             # capture the image and set the proper name and path for it
+            cap_time, img_path, img_arr = self.scan()
+            # preprocess the image
+            preproc_img = self.preprocess(img_arr)
+            # create thumbnail
+            thumbnail = self.make_thumbnail(preproc_img)
+
             try:
-                cap_time, img_path, img_arr = self.scan()
-                # preprocess the image
-                preproc_img = self.preprocess(img_arr)
-                # create thumbnail
-                thumbnail = self.make_thumbnail(preproc_img)
-
-                try:
-                    self.upload_thumbnail(thumbnail, time_stamp=cap_time)
-                    self.logger.info('Uploading {}.jpg thumbnail was successful!'.format(cap_time))
-                except Exception:
-                    self.logger.error('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
-
+                self.upload_thumbnail(thumbnail, time_stamp=cap_time)
+                self.logger.info('Uploading {}.jpg thumbnail was successful!'.format(cap_time))
             except Exception:
-                print('Couldn\'t do shit!')
+                self.logger.error('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
 
     @utils.retry_on_failure(attempts=2)
     def retry_uploading_image(self, image, time_stamp):
@@ -220,19 +218,16 @@ class SkyScanner(Controller, ImageProcessor):
         """
         self.upload_image(image, time_stamp)
 
-    @utils.loop_infinitely(time_gap=10)
+    @utils.loop_infinitely(time_gap=config.cap_mod)
     def execute_periodically(self):
         """
         Recurrently takes a picture from sky and pre-processes it. Then it tries to upload it to the server
         during the daytime. if failed, it puts the image array in `upload_stack`.
         """
         if self.daytime or self.config.night_mode:
-            try:
-                self.execute_and_upload()
-            except Exception as e:
-                self.logger.error(e)
+            self.execute_and_upload()
 
-    @utils.loop_infinitely(time_gap=False)
+    @utils.loop_infinitely(time_gap=0)
     def check_upload_stack(self):
         """
         Checks the `upload_stack` every 5 seconds to retry uploading the images that were not successfully
@@ -246,14 +241,14 @@ class SkyScanner(Controller, ImageProcessor):
                 self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
             except Exception as e:
                 self.logger.warning(
-                    'retrying to upload {}.jpg failed! Queueing for saving on disk'.format(cap_time)
+                    'retrying to upload {}.jpg failed! Queueing for saving on disk'.format(cap_time),
+                    exc_info=True
                 )
-                self.logger.exception(e)
                 self.write_stack.put((cap_time, img_path, img_arr))
         else:
             time.sleep(5)
 
-    @utils.loop_infinitely(time_gap=False)
+    @utils.loop_infinitely(time_gap=0)
     def check_write_stack(self):
         """
         Checks the `write_stack` every 5 seconds to save the images waiting in `write_stack' in `storage_path`.
@@ -265,13 +260,12 @@ class SkyScanner(Controller, ImageProcessor):
                 self.save_as_pic(image_arr=img_arr, output_name=img_path)
                 self.logger.info('{} was successfully written on disk.'.format(img_path))
             except Exception as e:
-                self.logger.warning('failed to write {} on disk'.format(img_path))
-                self.logger.exception(e)
+                self.logger.warning('failed to write {} on disk'.format(img_path), exc_info=True)
                 time.sleep(10)
         else:
             time.sleep(5)
 
-    @utils.loop_infinitely(time_gap=False)
+    @utils.loop_infinitely(time_gap=0)
     def check_disk(self):
         """
         Checks the `storage_path` every 10 seconds to try uploading the stored images. If it failed, waits
@@ -290,8 +284,8 @@ class SkyScanner(Controller, ImageProcessor):
                     os.remove(image)
                     self.logger.info('{} was removed from disk'.format(image))
                 except Exception as e:
-                    self.logger.warning('failed to upload {} from disk to the server'.format(image))
-                    self.logger.exception(e)
+                    self.logger.warning('failed to upload {} from disk to the server'.format(image),
+                                        exc_info=True)
                     time.sleep(30)
 
     def do_sunrise_operations(self):
@@ -299,7 +293,7 @@ class SkyScanner(Controller, ImageProcessor):
         Once it's sunrise, sets `daytime` attribute to True and sends a sms text reporting the device status.
         """
         if not self.daytime:
-            self.logger.info('It\'s daytime!')
+            self.logger.debug('It\'s daytime!')
             self.daytime = True
 
             if not self.messenger.is_power_on():
@@ -317,7 +311,7 @@ class SkyScanner(Controller, ImageProcessor):
         If there's any image stored in `storage_path`, it would compress them and save it in `storage_path`..
         """
         if self.daytime:
-            self.logger.info('Daytime is over!')
+            self.logger.debug('Daytime is over!')
             self.daytime = False
 
             if self.config.autonomous_mode:
@@ -350,57 +344,51 @@ class SkyScanner(Controller, ImageProcessor):
                 try:
                     self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
                 except Exception as e:
-                    self.logger.exception(e)
+                    self.logger.error('New sunrise/sunset times could not be assigned!', e)
 
     def run_offline(self):
         """
         Concurrently Runs the watching, writing and thumbnail-uploading operations recurrently in multiple threads
          in offline mode. (data collection mode)
         """
-        try:
-            jobs = []
-            self.logger.info('Initializing the watcher!')
-            watcher = threading.Thread(name='Watcher', target=self.watch_time)
-            jobs.append(watcher)
-            self.logger.info('Initializing the writer!')
-            writer = threading.Thread(name='Writer', target=self.execute_and_store)
-            jobs.append(writer)
-            self.logger.info('Initializing the thumbnail uploader!')
-            uploader = threading.Thread(name='ThumbnailUploader', target=self.send_thumbnail)
-            jobs.append(uploader)
+        jobs = []
+        self.logger.info('Initializing the watcher!')
+        watcher = threading.Thread(name='Watcher', target=self.watch_time)
+        jobs.append(watcher)
+        self.logger.info('Initializing the writer!')
+        writer = threading.Thread(name='Writer', target=self.execute_and_store)
+        jobs.append(writer)
+        self.logger.info('Initializing the thumbnail uploader!')
+        uploader = threading.Thread(name='ThumbnailUploader', target=self.send_thumbnail)
+        jobs.append(uploader)
 
-            for job in jobs:
-                job.start()
-        except Exception:
-            self.logger.exception('Sky Scanner has stopped working!', exc_info=True)
+        for job in jobs:
+            job.start()
 
     def run_online(self):
         """
         Concurrently Runs the watching, writing and thumbnailUploading operations recurrently in multiple threads
         in online mode.
         """
-        try:
-            jobs = []
-            self.logger.info('Initializing the watcher!')
-            watcher = threading.Thread(name='Watcher', target=self.watch_time)
-            jobs.append(watcher)
-            self.logger.info('Initializing the uploader!')
-            uploader = threading.Thread(name='Uploader', target=self.execute_periodically)
-            jobs.append(uploader)
-            self.logger.info('Initializing the retriever!')
-            retriever = threading.Thread(name='Retriever', target=self.check_upload_stack)
-            jobs.append(retriever)
-            self.logger.info('Initializing the writer!')
-            writer = threading.Thread(name='Writer', target=self.check_write_stack)
-            jobs.append(writer)
-            self.logger.info('Initializing the disk checker!')
-            disk_checker = threading.Thread(name='Disk Checker', target=self.check_disk)
-            jobs.append(disk_checker)
+        jobs = []
+        self.logger.info('Initializing the watcher!')
+        watcher = threading.Thread(name='Watcher', target=self.watch_time)
+        jobs.append(watcher)
+        self.logger.info('Initializing the uploader!')
+        uploader = threading.Thread(name='Uploader', target=self.execute_periodically)
+        jobs.append(uploader)
+        self.logger.info('Initializing the retriever!')
+        retriever = threading.Thread(name='Retriever', target=self.check_upload_stack)
+        jobs.append(retriever)
+        self.logger.info('Initializing the writer!')
+        writer = threading.Thread(name='Writer', target=self.check_write_stack)
+        jobs.append(writer)
+        self.logger.info('Initializing the disk checker!')
+        disk_checker = threading.Thread(name='Disk Checker', target=self.check_disk)
+        jobs.append(disk_checker)
 
-            for job in jobs:
-                job.start()
-        except Exception:
-            self.logger.exception('Sky Scanner has stopped working!', exc_info=True)
+        for job in jobs:
+            job.start()
 
     def main(self):
         """
