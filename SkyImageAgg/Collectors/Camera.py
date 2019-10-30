@@ -6,7 +6,7 @@ class Cam(ABC):
         pass
 
     @abstractmethod
-    def login(self, address, username, pwd):
+    def login(self, username, pwd):
         """
 
         Parameters

@@ -13,8 +13,9 @@ class GeoVisionCam(Camera.Cam):
     """
 
     """
-    def __init__(self):
+    def __init__(self, cam_address):
         super().__init__()
+        self.cam_address = cam_address
         self.user_token = None
         self.pass_token = None
         self.desc_token = None
@@ -23,27 +24,26 @@ class GeoVisionCam(Camera.Cam):
     def _gen_md5(string):
         return hashlib.md5(string.encode('utf-8')).hexdigest()
 
-    @staticmethod
-    def _get_salt_values(address):
+    def _get_salt_values(self):
         # get html and JS code as text
-        page = requests.get('{}/ssi.cgi/Login.htm'.format(address))
+        page = requests.get('{}/ssi.cgi/Login.htm'.format(self.cam_address))
         html_content = BeautifulSoup(page.content, "html.parser").text
         # parse the salt values from the HTML/JS code of login page(cc1 and cc2)
         salt = re.search(r'cc1=\"(.{4})\".*cc2=\"(.{4})\"', html_content)
         return salt.groups()
 
-    def _get_hashed_credentials(self, cam_address, username, pwd):
-        cc1, cc2 = self._get_salt_values(cam_address)
+    def _get_hashed_credentials(self, username, pwd):
+        cc1, cc2 = self._get_salt_values()
         # hash mechanism/formula based on the JS code of camera interface
         umd5 = '{}{}{}'.format(cc1, username.lower(), cc2)
         pmd5 = '{}{}{}'.format(cc2, pwd.lower(), cc1)
         return self._gen_md5(umd5).upper(), self._gen_md5(pmd5).upper()
 
-    def login(self, cam_address, username, pwd):
+    def login(self, username, pwd):
         """
 
         """
-        umd5, pmd5 = self._get_hashed_credentials(cam_address, username, pwd)
+        umd5, pmd5 = self._get_hashed_credentials(username, pwd)
         data = {
             'grp': -1,
             'username': '',
@@ -57,7 +57,7 @@ class GeoVisionCam(Camera.Cam):
         headers = {
             'User-Agent': 'Mozilla'
         }
-        c = requests.post('{}/LoginPC.cgi'.format(self.address), data=data, headers=headers)
+        c = requests.post('{}/LoginPC.cgi'.format(self.cam_address), data=data, headers=headers)
 
         self.user_token, self.pass_token, self.desc_token = re.search(
             r'gUserName\s=\s\"(.*)\";\n.*\s\"(.*)\";\n.*\"(.*)\"',
@@ -84,7 +84,7 @@ class GeoVisionCam(Camera.Cam):
                 'secret': 1,
                 'key': self.desc_token
             }
-            r = requests.post('{}/PictureCatch.cgi'.format(self.address), data=data, stream=True)
+            r = requests.post('{}/PictureCatch.cgi'.format(self.cam_address), data=data, stream=True)
 
             if output.lower() == 'array':
                 return cv2.imdecode(np.frombuffer(r.content, np.uint8), -1)
