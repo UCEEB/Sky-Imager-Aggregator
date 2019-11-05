@@ -1,28 +1,74 @@
 import logging
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
+from influxdb import InfluxDBClient
+from pythonjsonlogger import jsonlogger
 from os.path import join
 import time
+import json
 
+
+class InfluxdbLogHandler(logging.Handler):
+    def __init__(self, host, username, pwd, database, measurement, port=8086):
+        super().__init__()
+        # connect to influxdb server
+        self.client = InfluxDBClient(
+            host=host,
+            port=port,
+            username=username,
+            password=pwd
+        )
+        # check if the database already exists
+        self.db = database
+        db_list = [i['name'] for i in self.client.get_list_database()]
+        if not self.db in db_list:
+            # if not, make a new database
+            self.client.create_database(self.db)
+        self.measurment = measurement
+        self.tags = ''
+
+    def add_tags(self, **kwargs):
+        tag_set = [
+            ',{tag_key}={tag_value}'.format(tag_key=k, tag_value=v)
+            for k, v in self.kwargs.items()
+        ]
+        self.tags = ''.join(tag_set)
+
+    def emit(self, record):
+        line = '{measurement}{tags} ' \
+               'name="{name}",' \
+               'levelname="{levelname}",' \
+               'asctime="{asctime}",' \
+               'threadName="{threadName}",' \
+               'message="{message}"'.format(
+            measurement=self.measurment,
+            tags=self.tags,
+            name=record.name,
+            levelname=record.levelname,
+            asctime=record.asctime,
+            threadName=record.threadName,
+            message=record.message
+        )
+        self.client.write(data=[line], params={'db': self.db}, protocol='line')
 
 class Utilities:
-    def __init__(self):
-        self.name = __name__
-
     @staticmethod
     def set_logger(
             log_dir=None,
             stream=True,
-            file_suffix='%Y-%m-%d',
-            file_prefix='SIA_logs',
-            level=logging.INFO
+            remote=True,
+            suffix='%Y-%m-%d',
+            prefix='SIA_logs',
+            level=logging.INFO,
+            fmt="[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s",
+            **kwargs
     ):
         handlers = []
 
         if log_dir:
             log_file = join(
                 log_dir,
-                '{}_{}.log'.format(file_prefix, datetime.utcnow().strftime(file_suffix))
+                '{}_{}.log'.format(prefix, datetime.utcnow().strftime(suffix))
             )
 
             file_handler = TimedRotatingFileHandler(
@@ -31,16 +77,22 @@ class Utilities:
                 backupCount=20
             )
 
-            file_handler.suffix = file_suffix
+            file_handler.setFormatter(jsonlogger.JsonFormatter(fmt))
+            file_handler.suffix = suffix
             handlers.append(file_handler)
 
         if stream:
-            handlers.append(logging.StreamHandler())
+            strm_handler = logging.StreamHandler()
+            handlers.append(strm_handler)
+
+        if remote:
+            remote_handler = InfluxdbLogHandler(kwargs)
+            handlers.append(remote_handler)
 
         logging.basicConfig(
             handlers=handlers,
             level=level,
-            format="[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s",
+            format=fmt,
             datefmt='%Y-%m-%dT%H:%M:%S'
         )
 
