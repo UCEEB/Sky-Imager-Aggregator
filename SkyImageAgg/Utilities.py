@@ -56,7 +56,7 @@ class Utilities:
     def set_logger(
             log_dir=None,
             stream=True,
-            remote=True,
+            remote=False,
             suffix='%Y-%m-%d',
             prefix='SIA_logs',
             level=logging.INFO,

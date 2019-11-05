@@ -15,7 +15,7 @@ class RPiCam(Camera.Cam):
     def __init__(self):
         super().__init__()
         self.cam = PiCamera()
-        self.cam.resolution = (1926, 1926)
+        self.cam.resolution = (2592, 1944)
         self.cam.start_preview()
         time.sleep(2)
 
