@@ -51,9 +51,15 @@ class InfluxdbLogHandler(logging.Handler):
         )
         self.client.write(data=[line], params={'db': self.db}, protocol='line')
 
+
 class Utilities:
     @staticmethod
     def set_logger(
+            host,
+            username,
+            pwd,
+            database,
+            measurement,
             log_dir=None,
             stream=True,
             remote=False,
@@ -61,7 +67,6 @@ class Utilities:
             prefix='SIA_logs',
             level=logging.INFO,
             fmt="[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s",
-            **kwargs
     ):
         handlers = []
 
@@ -86,7 +91,13 @@ class Utilities:
             handlers.append(strm_handler)
 
         if remote:
-            remote_handler = InfluxdbLogHandler(kwargs)
+            remote_handler = InfluxdbLogHandler(
+                host,
+                username,
+                pwd,
+                database,
+                measurement
+            )
             handlers.append(remote_handler)
 
         logging.basicConfig(
