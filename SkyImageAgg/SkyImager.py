@@ -66,7 +66,16 @@ class SkyScanner(Controller, ImageProcessor):
         """
         Initializes a SkyScanner instance.
         """
-        self.logger = utils.set_logger(log_dir=self.config.log_path, stream=self.config.log_to_console)
+        self.logger = utils.set_logger(
+            log_dir=self.config.log_path,
+            stream=self.config.log_to_console,
+            remote=self.config.INFLX_mode,
+            host=self.config.INFLX_host,
+            username=self.config.INFLX_user,
+            pwd=self.config.INFLX_pwd,
+            database=self.config.INFLX_db,
+            measurement=self.config.INFLX_measurement,
+        )
         super().__init__(
             server=self.config.server,
             client_id=self.config.client_id,
