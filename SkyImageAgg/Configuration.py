@@ -53,3 +53,11 @@ class Configuration:
         self.MODBUS_bytesize = self.conf.getint('MODBUS', 'bytesize')
         self.MODBUS_parity = self.conf.get('MODBUS', 'parity')
         self.MODBUS_stopbits = self.conf.getint('MODBUS', 'stopbits')
+
+        self.INFLX_mode = self.conf.getboolean('INFLUXDB', 'mode')
+        self.INFLX_host = self.conf.get('INFLUXDB', 'host')
+        self.INFLX_port = self.conf.getint('INFLUXDB', 'port')
+        self.INFLX_user = self.conf.get('INFLUXDB', 'user')
+        self.INFLX_pwd = self.conf.get('INFLUXDB', 'password')
+        self.INFLX_db = self.conf.get('INFLUXDB', 'database')
+        self.INFLX_measurement = self.conf.get('INFLUXDB', 'measurement')
