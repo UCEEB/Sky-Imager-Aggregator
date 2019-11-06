@@ -1,11 +1,10 @@
-import logging
-from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
-from influxdb import InfluxDBClient
-from pythonjsonlogger import jsonlogger
-from os.path import join
 import time
 import json
+import logging
+from os.path import join
+from datetime import datetime
+from influxdb import InfluxDBClient
+from logging.handlers import TimedRotatingFileHandler
 
 
 class InfluxdbLogHandler(logging.Handler):
@@ -20,7 +19,9 @@ class InfluxdbLogHandler(logging.Handler):
         )
         # check if the database already exists
         self.db = database
-        db_list = [i['name'] for i in self.client.get_list_database()]
+        db_list = [
+            i['name'] for i in self.client.get_list_database()
+        ]
         if not self.db in db_list:
             # if not, make a new database
             self.client.create_database(self.db)
@@ -30,7 +31,7 @@ class InfluxdbLogHandler(logging.Handler):
     def add_tags(self, **kwargs):
         tag_set = [
             ',{tag_key}={tag_value}'.format(tag_key=k, tag_value=v)
-            for k, v in self.kwargs.items()
+            for k, v in kwargs.items()
         ]
         self.tags = ''.join(tag_set)
 
@@ -67,7 +68,29 @@ class Utilities:
             prefix='SIA_logs',
             level=logging.INFO,
             fmt="[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s",
+            tags=False
     ):
+        """
+
+        Parameters
+        ----------
+        host
+        username
+        pwd
+        database
+        measurement
+        log_dir
+        stream
+        remote
+        suffix
+        prefix
+        level
+        fmt
+
+        Returns
+        -------
+
+        """
         handlers = []
 
         if log_dir:
@@ -81,8 +104,6 @@ class Utilities:
                 when='midnight',
                 backupCount=20
             )
-
-            file_handler.setFormatter(jsonlogger.JsonFormatter(fmt))
             file_handler.suffix = suffix
             handlers.append(file_handler)
 
@@ -98,6 +119,8 @@ class Utilities:
                 database,
                 measurement
             )
+            if tags:
+                remote_handler.add_tags(**tags)
             handlers.append(remote_handler)
 
         logging.basicConfig(
