@@ -75,6 +75,10 @@ class SkyScanner(Controller, ImageProcessor):
             pwd=self.config.INFLX_pwd,
             database=self.config.INFLX_db,
             measurement=self.config.INFLX_measurement,
+            tags={
+                'latitude': self.config.camera_latitude,
+                'longitude': self.config.camera_longitude
+            }
         )
         super().__init__(
             server=self.config.server,
@@ -407,4 +411,3 @@ class SkyScanner(Controller, ImageProcessor):
             self.run_offline()
         else:
             self.run_online()
-
