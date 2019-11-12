@@ -77,7 +77,8 @@ class SkyScanner(Controller, ImageProcessor):
             measurement=self.config.INFLX_measurement,
             tags={
                 'latitude': self.config.camera_latitude,
-                'longitude': self.config.camera_longitude
+                'longitude': self.config.camera_longitude,
+                'host': self.config.client_id
             }
         )
         super().__init__(
