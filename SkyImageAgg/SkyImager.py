@@ -78,7 +78,7 @@ class SkyScanner(Controller, ImageProcessor):
             tags={
                 'latitude': self.config.camera_latitude,
                 'longitude': self.config.camera_longitude,
-                'host': self.config.client_id
+                'host': os.uname()[1]
             }
         )
         super().__init__(
