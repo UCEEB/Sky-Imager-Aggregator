@@ -2,7 +2,6 @@ import os
 import socket
 import time
 import serial
-from serial.serialutil import SerialException
 import math
 
 from timeout_decorator import timeout
