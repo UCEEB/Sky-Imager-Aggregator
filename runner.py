@@ -9,7 +9,7 @@ from SkyImageAgg.SkyImager import SkyScanner
 
 
 class Daemon:
-    """A generic daemon class.
+    """A generic daemon class by Sander Marechal.
 
     Usage: subclass the daemon class and override the run() method."""
 
@@ -76,8 +76,8 @@ class Daemon:
             pid = None
 
         if pid:
-            message = "pidfile {0} already exist. " + \
-                      "Daemon already running?\n"
+            message = 'pidfile {0} already exist. ' + \
+                      'Daemon already running?\n'
             sys.stderr.write(message.format(self.pidfile))
             sys.exit(1)
 
@@ -96,8 +96,8 @@ class Daemon:
             pid = None
 
         if not pid:
-            message = "pidfile {0} does not exist. " + \
-                      "Daemon not running?\n"
+            message = 'pidfile {0} does not exist. ' + \
+                      'Daemon not running?\n'
             sys.stderr.write(message.format(self.pidfile))
             return  # not an error in a restart
 
@@ -107,8 +107,8 @@ class Daemon:
                 os.kill(pid, signal.SIGTERM)
                 time.sleep(0.1)
         except OSError as e:
-            e = str(err.args)
-            if e.find("No such process") > 0:
+            e = str(e.args)
+            if e.find('No such process') > 0:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
@@ -134,8 +134,8 @@ class SkyScannerDaemon(Daemon):
         s.main()
 
 
-if __name__ == "__main__":
-    daemon = SkyScannerDaemon('/tmp/daemon-example.pid')
+if __name__ == '__main__':
+    daemon = SkyScannerDaemon('/tmp/skyscanner.pid')
     if len(sys.argv) == 2:
         if 'start' == sys.argv[1]:
             daemon.start()
@@ -143,13 +143,10 @@ if __name__ == "__main__":
             daemon.stop()
         elif 'restart' == sys.argv[1]:
             daemon.restart()
-        elif 'run' == sys.argv[1]:
-            s = SkyScanner()
-            s.main()
         else:
-            print("Unknown command")
+            print('Unknown command')
             sys.exit(2)
         sys.exit(0)
     else:
-        print("usage: {} start|stop|restart".format(sys.argv[0]))
+        print('usage: {} start|stop|restart'.format(sys.argv[0]))
         sys.exit(2)
