@@ -56,11 +56,11 @@ class InfluxdbLogHandler(logging.Handler):
 class Utilities:
     @staticmethod
     def set_logger(
-            host,
-            username,
-            pwd,
-            database,
-            measurement,
+            host=None,
+            username=None,
+            pwd=None,
+            database=None,
+            measurement=None,
             log_dir=None,
             stream=True,
             remote=False,
@@ -122,6 +122,9 @@ class Utilities:
             if tags:
                 remote_handler.add_tags(**tags)
             handlers.append(remote_handler)
+
+        if not (remote, stream, log_dir):
+            handlers.append(logging.NullHandler())
 
         logging.basicConfig(
             handlers=handlers,

@@ -148,7 +148,6 @@ class Messenger(Modem):
         phone_num
         sms_text
         """
-        self.enable_serial_port(self.port)
         # transmitting AT command
         self.send_command('AT')
         time.sleep(0.2)
@@ -168,7 +167,6 @@ class Messenger(Modem):
                 self.serial_com.close()
             except Exception as e:
                 self._logger.exception(e)
-
 
 class GPRS(Modem):
     """
