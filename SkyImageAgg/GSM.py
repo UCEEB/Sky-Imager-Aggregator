@@ -2,9 +2,7 @@ import os
 import socket
 import time
 import serial
-import math
 
-from timeout_decorator import timeout
 import RPi.GPIO as GPIO
 
 from SkyImageAgg.Utilities import Utilities
@@ -128,17 +126,8 @@ class Messenger(Modem):
     """
 
     """
-    def __init__(
-            self,
-            port='/dev/ttyS0',
-            pin=7,
-            logger=None
-    ):
-        super().__init__(
-            port=port,
-            pin=pin,
-            logger=logger
-        )
+    def __init__(self, port='/dev/ttyS0', pin=7, logger=None):
+        super().__init__(port=port, pin=pin, logger=logger)
 
     def send_sms(self, phone_num, sms_text):
         """
@@ -172,18 +161,8 @@ class GPRS(Modem):
     """
 
     """
-    def __init__(
-            self,
-            ppp_config_file,
-            port='/dev/ttyS0',
-            pin=7,
-            logger=None
-    ):
-        super().__init__(
-            port=port,
-            pin=pin,
-            logger=logger
-        )
+    def __init__(self, ppp_config_file, port='/dev/ttyS0', pin=7, logger=None):
+        super().__init__(port=port, pin=pin, logger=logger)
         self.ppp_config_file = ppp_config_file
 
     def has_internet(self, host="8.8.8.8", port=53, timeout=20):
@@ -208,7 +187,7 @@ class GPRS(Modem):
             return False
 
     @timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
-    def check_internet(self):
+    def check_internet_connection(self):
         """
 
         """
@@ -234,9 +213,9 @@ class GPRS(Modem):
                 'sudo pon {}'.format(os.path.basename(self.ppp_config_file))
             )
             # wait 420 seconds for ppp to start, if not raise TimeoutError
-            self.check_internet()
+            self.check_internet_connection()
         else:
-            self._logger.info('There is already an internet connection!')
+            self._logger.info('The device is already connected to the internet!')
 
     def disable_gprs(self):
         """
