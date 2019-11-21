@@ -3,18 +3,22 @@ from io import BytesIO
 
 import cv2
 import numpy as np
+import picamera
 from picamera import PiCamera
 
-from SkyImageAgg.Collectors import Camera
+from SkyImageAgg.Collectors.Camera import Cam
 
 
-class RPiCam(Camera.Cam):
+class RpiCam(Cam):
     """
 
     """
     def __init__(self):
         super().__init__()
-        self.cam = PiCamera()
+        try:
+            self.cam = PiCamera()
+        except picamera.exc.PiCameraMMALError as e:
+            raise ConnectionError('It seems that the RPi camera is being used by another application!')
         self.cam.resolution = (2592, 1944)
         self.cam.start_preview()
         time.sleep(2)
