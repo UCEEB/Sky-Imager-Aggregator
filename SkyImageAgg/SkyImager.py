@@ -60,27 +60,33 @@ class SkyScanner(Controller, ImageProcessor):
     daytime : `boolean`
         True if daytime, false otherwise.
     """
-    config = Configuration(config_file=join(_parent_dir_, 'config.ini'))
+    config = Configuration(config_file=join(_parent_dir, 'config.ini'))
+    logger = Logger(name='SkyScanner')
 
     def __init__(self):
         """
         Initializes a SkyScanner instance.
         """
-        self.logger = utils.set_logger(
-            log_dir=self.config.log_path,
-            stream=self.config.log_to_console,
-            remote=self.config.INFLX_mode,
-            host=self.config.INFLX_host,
-            username=self.config.INFLX_user,
-            pwd=self.config.INFLX_pwd,
-            database=self.config.INFLX_db,
-            measurement=self.config.INFLX_measurement,
-            tags={
-                'latitude': self.config.camera_latitude,
-                'longitude': self.config.camera_longitude,
-                'host': os.uname()[1]
-            }
-        )
+        if self.config.log_to_console:
+            self.logger.add_stream_handler()
+
+        if self.config.log_path:
+            log_file_path = join(self.config.log_path, self.logger.name)
+            self.logger.add_timed_rotating_file_handler(log_file=log_file_path)
+
+        if self.config.INFLX_mode:
+            self.logger.add_remote_handler(
+                username=self.config.INFLX_user,
+                pwd=self.config.INFLX_pwd,
+                host=self.config.INFLX_host,
+                database=self.config.INFLX_db,
+                measurement=self.config.INFLX_measurement,
+                tags={
+                    'latitude': self.config.camera_latitude,
+                    'longitude': self.config.camera_longitude,
+                    'host': os.uname()[1]
+                }
+            )
         super().__init__(
             server=self.config.server,
             client_id=self.config.client_id,
