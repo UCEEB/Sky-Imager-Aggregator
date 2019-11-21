@@ -6,10 +6,10 @@ import cv2
 import numpy as np
 from bs4 import BeautifulSoup
 
-from SkyImageAgg.Collectors import Camera
+from SkyImageAgg.Collectors.Camera import Cam
 
 
-class GeoVisionCam(Camera.Cam):
+class GeoVisionCam(Cam):
     """
 
     """
