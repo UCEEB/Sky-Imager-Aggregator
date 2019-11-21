@@ -1,30 +1,29 @@
-import os
-from os.path import exists, join
 import base64
-import json
-import hmac
-import csv
-import hashlib
-import glob
-import shutil
-import pickle
-import zipfile
 import datetime as dt
+import glob
+import hashlib
+import hmac
+import json
+import os
+import pickle
+import shutil
+import zipfile
 from datetime import datetime
+from os.path import exists
+from os.path import join
 
-import requests
-from timeout_decorator import timeout
 import numpy as np
-from astral import Astral, Location
-
-from SkyImageAgg.Utilities import Utilities
+import requests
+from astral import Astral
+from astral import Location
+from timeout_decorator import timeout
 
 _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
 
 class TwilightCalc:
     """
-    A class responsible to manage the twilight times with respect to the geolocation..
+    A class responsible to manage the twilight times with respect to the geolocation.
 
     Attributes
     ----------
@@ -34,7 +33,6 @@ class TwilightCalc:
         location longitude
     altitude : `float`
         location altitude
-    logger : ``
 
     Parameters
     ----------
@@ -44,39 +42,17 @@ class TwilightCalc:
         location longitude
     altitude : `float`
         location altitude
-    logger : ``
     """
 
-    def __init__(self, latitude, longitude, altitude, logger=None):
+    def __init__(self, latitude, longitude, altitude):
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
-        if logger:
-            self._logger = logger
-        else:
-            self._logger = Utilities.set_logger()
 
         if not exists(join(_parent_dir_, 'twilight_times.pkl')):
-            if self.is_location_changed():
+            if self.has_location_changed():
+                print('Collecting twilight times within a year for your location...')
                 self.collect_annual_twilight_times()
-
-    @staticmethod
-    def sync_time(ntp_server):
-        """
-        Synchronizes device time with UTC.
-
-        Parameters
-        ----------
-        ntp_server : `str`
-            the NTP server address
-
-        Notes
-        -----
-            You need to install ntpd package on your device.
-            see:
-            https://raspberrytips.com/time-sync-raspberry-pi/
-        """
-        os.system('sudo /usr/sbin/ntpd {}'.format(ntp_server))
 
     def find_sunrise_and_sunset_time(self, date=None):
         """
@@ -157,7 +133,7 @@ class TwilightCalc:
             col = pickle.load(handle)
         return col[day_of_year]
 
-    def is_location_changed(self):
+    def has_location_changed(self):
         """
         Checks if the given location is different from the stored one in the existing twilight collection.
 
@@ -170,6 +146,46 @@ class TwilightCalc:
                 return False
         finally:
             return True
+
+
+def _encrypt_data(key, message):
+    """
+    Encrypts the given data/message using SHA-256 key.
+
+    Parameters
+    ----------
+    key : `bytes`
+        provided secret key
+    message : `str`
+        message that is intended to be hashed
+
+    Returns
+    -------
+    hashed data : `str`
+        the encrypted data
+    """
+    return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
+
+
+def _send_post_request(url, data):
+    """
+    Sends a post request to a given server/url
+
+    Parameters
+    ----------
+    url : `str`
+        server's url
+    data : `str`
+        data to be sent
+
+    Returns
+    -------
+    http response : `dict`
+    """
+    post_data = {
+        'data': data
+    }
+    return requests.post(url, data=post_data)
 
 
 class Controller(TwilightCalc):
@@ -251,113 +267,27 @@ class Controller(TwilightCalc):
             auth_key,
             storage_path,
             time_format,
-            logger,
+            logger=None,
             ext_storage_path=None
     ):
         super().__init__(
             latitude=latitude,
             longitude=longitude,
             altitude=altitude,
-            logger=logger
         )
+
+        if not logger:
+            # Null logger if no logger is defined as parameter
+            self._logger = logging.getLogger(__name__).addHandler(NullHandler())
+        else:
+            self._logger = logger
+
         self.client_id = client_id
         self.key = bytes(auth_key, 'ascii')
         self.server = server
         self.time_format = time_format
         self.storage_path = storage_path
         self.ext_storage_path = ext_storage_path
-
-    @staticmethod
-    def _encrypt_data(key, message):
-        """
-        Encrypts the given data/message using SHA-256 key.
-
-        Parameters
-        ----------
-        key : `bytes`
-            provided secret key
-        message : `str`
-            message that is intended to be hashed
-
-        Returns
-        -------
-        hashed data : `str`
-            the encrypted data
-        """
-        return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
-
-    @staticmethod
-    def _send_post_request(url, data):
-        """
-        Sends a post request to a given server/url
-
-        Parameters
-        ----------
-        url : `str`
-            server's url
-        data : `str`
-            data to be sent
-
-        Returns
-        -------
-        http response : `dict`
-        """
-        post_data = {
-            'data': data
-        }
-        return requests.post(url, data=post_data)
-
-    @staticmethod
-    def stamp_curr_time(time_format):
-        """
-        Gets the current time based on the specified format.
-
-        Parameters
-        ----------
-        time_format : `str`
-            the strftime format
-
-        Returns
-        -------
-        current time : `datetime.time`
-            the current time specified in `time_format`
-        """
-        return dt.datetime.utcnow().strftime(time_format)
-
-    @staticmethod
-    def _get_file_timestamp(file):
-        """
-        Gets the latest date that the file was modified.
-
-        Parameters
-        ----------
-        file : `str`
-            path to the file
-
-        Returns
-        -------
-        modification date : `datetime`
-            the date that the file was modified.
-        """
-        return datetime.fromtimestamp(os.path.getmtime(file))
-
-    def _get_file_datetime_as_string(self, file, datetime_format):
-        """
-        Gets the file modification date in a given format as a string
-
-        Parameters
-        ----------
-        file : `str`
-            path to the file
-        datetime_format : `str`
-            date format in strftime
-
-        Returns
-        -------
-        date : `str`
-            modification date as a `str`
-        """
-        return self._get_file_timestamp(file).strftime(datetime_format)
 
     def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
         """
@@ -400,9 +330,9 @@ class Controller(TwilightCalc):
             the timestamp of the image (default is current time as `datetime.utcnow`)
         """
         json_data = self._make_json_from_image(image, time_stamp)
-        signature = self._encrypt_data(self.key, json_data)
+        signature = _encrypt_data(self.key, json_data)
         try:
-            response = self._send_post_request('{}{}'.format(self.server, signature), json_data)
+            response = _send_post_request('{}{}'.format(self.server, signature), json_data)
             json_response = json.loads(response.text)
 
             if json_response['status'] != 'ok':
@@ -411,49 +341,6 @@ class Controller(TwilightCalc):
         except Exception as e:
             self._logger.exception(e)
             raise ConnectionError
-
-    def upload_as_bson(self, file, server):
-        """
-        Uploads file as binary json.
-
-        Parameters
-        ----------
-        file : `str`
-            path to the file
-        server : `str`
-            server address
-
-        Returns
-        -------
-        http response : `str`
-        """
-        data = {
-            "status": "ok",
-            "id": self.client_id,
-            "time": self._get_file_datetime_as_string(file, self.time_format),
-            "coding": "none"
-        }
-
-        json_data = json.dumps(data)
-        signature = self._encrypt_data(self.key, json_data)
-        url = '{}{}'.format(server, signature)
-
-        if isinstance(file, str) or isinstance(file, bytes):
-            files = [('image', file), ('json', json_data)]
-        else:
-            files = [('image', str(file)), ('json', json_data)]
-
-        response = requests.post(url=url, files=files)
-
-        try:
-            json_response = json.loads(response.text)
-        except Exception as e:
-            raise Exception(e)
-
-        if json_response['status'] != 'ok':
-            raise Exception(json_response['message'])
-
-        return json_response
 
     @timeout(60, timeout_exception=TimeoutError, use_signals=False)
     def upload_thumbnail(self, thumbnail, time_stamp=datetime.utcnow()):
@@ -483,21 +370,6 @@ class Controller(TwilightCalc):
         """
         self._upload_to_server(image, time_stamp=time_stamp)
 
-    @timeout(60, timeout_exception=TimeoutError, use_signals=False)
-    def upload_logfile(self, log_file, server):
-        """
-        Uploads the logfile to the server with a timeout limit.
-
-        Parameters
-        ----------
-        log_file : `str`
-            path to the logfile
-        server : `str`
-            server address
-        """
-        self._logger.debug('Start upload log to server')
-        self.upload_as_bson(log_file, server=server)
-
     def get_available_free_space(self):
         """
         Get the available space in the `storage_path`
@@ -514,7 +386,8 @@ class Controller(TwilightCalc):
         """
         Compresses all the jpeg images in `storage_path` and saves them in the same directory.
         """
-        zip_archive = '{}.zip'.format(self.stamp_curr_time(self.time_format))
+        curr_time = dt.datetime.utcnow().strftime(self.time_format)
+        zip_archive = '{}.zip'.format(curr_time)
         try:
             with zipfile.ZipFile(os.path.join(self.storage_path, zip_archive), 'w') as zf:
                 self._logger.debug('Compressing the images in the storage...')
@@ -522,30 +395,3 @@ class Controller(TwilightCalc):
                     zf.write(filename=file)
         except Exception as e:
             self._logger.exception(e)
-
-    # todo check function
-    def save_irradiance_csv(self, time, irradiance, ext_temperature, cell_temperature):
-        """
-        Writes the data received from the irradiance sensor onto the disk.
-
-        Parameters
-        ----------
-        time
-        irradiance
-        ext_temperature
-        cell_temperature
-        """
-        try:
-            with open(os.path.join(path, self.config.MODBUS_csv_name), 'a', newline='') as handle:
-                csv_file = csv.writer(handle, delimiter=';', quotechar='\'', quoting=csv.QUOTE_MINIMAL)
-
-                if self.config.MODBUS_log_temperature:
-                    csv_file.writerow([time, irradiance, ext_temperature, cell_temperature])
-                else:
-                    csv_file.writerow([time, irradiance])
-
-        except Exception as e:
-            self._logger.error('csv save to local storage error : ' + str(e))
-        else:
-            self._logger.debug('csv row saved in' + path + '/' + self.config.MODBUS_csv_name)
-            self._logger.info('irradiance saved ' + str(irradiance))
