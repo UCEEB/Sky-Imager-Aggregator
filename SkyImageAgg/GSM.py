@@ -1,7 +1,8 @@
 import os
 import socket
 import time
-import serial
+import logging
+from logging import NullHandler
 
 import RPi.GPIO as GPIO
 
@@ -12,14 +13,17 @@ class Modem:
     """
 
     """
+
     def __init__(self, port='/dev/ttyS0', pin=7, logger=None):
         self.port = port
         self.pin = pin
         self.serial_com = None
-        if logger:
-            self._logger = logger
+
+        if not logger:
+            # Null logger if no logger is defined as parameter
+            self._logger = logging.getLogger(__name__).addHandler(NullHandler())
         else:
-            self._logger = Utilities.set_logger()
+            self._logger = logger
 
     def set_pin(self, warnings=False):
         """
