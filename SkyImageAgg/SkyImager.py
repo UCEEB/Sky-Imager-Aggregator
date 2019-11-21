@@ -1,24 +1,43 @@
 #!/usr/bin/python3
-import os
-import time
-import glob
-import threading
 import datetime as dt
+import glob
+import os
+import threading
+import time
+from os.path import dirname
+from os.path import join
 from queue import LifoQueue
-from os.path import dirname, join
 
-from timeout_decorator import timeout
-
-from SkyImageAgg.GSM import Messenger, GPRS
-from SkyImageAgg.Controller import Controller
-from SkyImageAgg.Collectors.RPiCam import RPiCam
-from SkyImageAgg.Processor import ImageProcessor
-from SkyImageAgg.Configuration import Configuration
-from SkyImageAgg.Utilities import Utilities as utils
-from SkyImageAgg.Collectors.IrradianceSensor import IrrSensor
+from SkyImageAgg import decorators
 from SkyImageAgg.Collectors.GeoVisionCam import GeoVisionCam as IPCamera
+from SkyImageAgg.Collectors.IrradianceSensor import IrrSensor
+from SkyImageAgg.Collectors.RpiCam import RpiCam
+from SkyImageAgg.Configuration import Configuration
+from SkyImageAgg.Controller import Controller
+from SkyImageAgg.GSM import GPRS
+from SkyImageAgg.GSM import Messenger
+from SkyImageAgg.Logger import Logger
+from SkyImageAgg.Preprocessor import ImageProcessor
 
-_parent_dir_ = dirname(dirname(__file__))
+_parent_dir = dirname(dirname(__file__))
+
+
+def sync_time(ntp_server):
+    """
+    Synchronizes device time with UTC.
+
+    Parameters
+    ----------
+    ntp_server : `str`
+        the NTP server address
+
+    Notes
+    -----
+        You need to install ntpd package on your device.
+        see:
+        https://raspberrytips.com/time-sync-raspberry-pi/
+    """
+    os.system('sudo /usr/sbin/ntpd {}'.format(ntp_server))
 
 
 class SkyScanner(Controller, ImageProcessor):
@@ -39,7 +58,7 @@ class SkyScanner(Controller, ImageProcessor):
         an instance of `Configuration` class for calling the configuration variables from config.ini.
     logger : `logging`
         an instance of `logging` to log the events throughout the class.
-    cam : `IPCamera` or `RPiCam`
+    cam : `IPCamera` or `RpiCam`
         an instance of `Collectors.Cam` for capturing images.
     irr_sensor : `IrrSensor`
         an instance of `Collectors.IrradianceSensor.IrrSensor` to collect irradiance data.
@@ -99,16 +118,13 @@ class SkyScanner(Controller, ImageProcessor):
             time_format=self.config.time_format,
             logger=self.logger
         )
-        self.sync_time(self.config.ntp_server)
+        sync_time(self.config.ntp_server)
 
         if self.config.integrated_cam:
-            self.cam = RPiCam()
+            self.cam = RpiCam()
         else:
             self.cam = IPCamera(self.config.cam_address)
-            self.cam.login(
-                self.config.cam_username,
-                self.config.cam_pwd
-            )
+            self.cam.login(self.config.cam_username, self.config.cam_pwd)
 
         if self.config.light_sensor:
             self.irr_sensor = IrrSensor(
@@ -132,7 +148,7 @@ class SkyScanner(Controller, ImageProcessor):
         self.write_stack = LifoQueue()
         self.day_of_year = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
-        self.daytime = False
+        self.daytime = True
 
     def scan(self):
         """
@@ -144,7 +160,7 @@ class SkyScanner(Controller, ImageProcessor):
             a tuple of name (timestamp), path and the corresponding image array.
         """
         # store the current time according to the time format
-        cap_time = self.stamp_curr_time(self.config.time_format)
+        cap_time = dt.datetime.utcnow().strftime(self.config.time_format)
         # set the path to save the image
         output_path = os.path.join(self.storage_path, cap_time)
         return cap_time, output_path, self.cam.cap_pic()
@@ -185,7 +201,7 @@ class SkyScanner(Controller, ImageProcessor):
             self.logger.warning('Couldn\'t upload {}.jpg! Queueing for anothrt try!'.format(cap_time))
             self.upload_stack.put((cap_time, img_path, preproc_img))
 
-    @utils.loop_infinitely(time_gap=config.cap_mod)
+    @decorators.loop_infinitely(time_gap=config.cap_mod)
     def execute_and_store(self):
         """
         Recurrently takes a picture from sky, pre-processes it and stores it in `storage_path` directory
@@ -204,7 +220,7 @@ class SkyScanner(Controller, ImageProcessor):
                 self.logger.error('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=True)
 
     # FIXME
-    @utils.loop_infinitely(time_gap=config.thumbnailing_time_gap)
+    @decorators.loop_infinitely(time_gap=config.thumbnailing_time_gap)
     def send_thumbnail(self):
         """
         Recurrently takes a picture from sky, pre-processes it and makes a thumbnail out of the image array.
@@ -224,7 +240,7 @@ class SkyScanner(Controller, ImageProcessor):
             except Exception:
                 self.logger.error('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
 
-    @utils.retry_on_failure(attempts=2)
+    @decorators.retry_on_failure(attempts=2)
     def retry_uploading_image(self, image, time_stamp):
         """
         Retries to upload a given image for a given number of attempts passed through the decorator.
@@ -238,8 +254,8 @@ class SkyScanner(Controller, ImageProcessor):
         """
         self.upload_image(image, time_stamp)
 
-    @utils.loop_infinitely(time_gap=config.cap_mod)
-    def execute_periodically(self):
+    @decorators.loop_infinitely(time_gap=config.cap_mod)
+    def execute_and_upload_periodically(self):
         """
         Recurrently takes a picture from sky and pre-processes it. Then it tries to upload it to the server
         during the daytime. if failed, it puts the image array in `upload_stack`.
@@ -247,7 +263,7 @@ class SkyScanner(Controller, ImageProcessor):
         if self.daytime or self.config.night_mode:
             self.execute_and_upload()
 
-    @utils.loop_infinitely(time_gap=0)
+    @decorators.loop_infinitely(time_gap=0)
     def check_upload_stack(self):
         """
         Checks the `upload_stack` every 5 seconds to retry uploading the images that were not successfully
@@ -261,14 +277,14 @@ class SkyScanner(Controller, ImageProcessor):
                 self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
             except Exception as e:
                 self.logger.warning(
-                    'retrying to upload {}.jpg failed! Queueing for saving on disk'.format(cap_time),
+                    'retrying to upload {}.jpg failed! Queueing for saving on disk...'.format(cap_time),
                     exc_info=True
                 )
                 self.write_stack.put((cap_time, img_path, img_arr))
         else:
             time.sleep(5)
 
-    @utils.loop_infinitely(time_gap=0)
+    @decorators.loop_infinitely(time_gap=0)
     def check_write_stack(self):
         """
         Checks the `write_stack` every 5 seconds to save the images waiting in `write_stack' in `storage_path`.
@@ -280,17 +296,20 @@ class SkyScanner(Controller, ImageProcessor):
                 self.save_as_pic(image_arr=img_arr, output_name=img_path)
                 self.logger.info('{} was successfully written on disk.'.format(img_path))
             except Exception as e:
-                self.logger.warning('failed to write {} on disk'.format(img_path), exc_info=True)
+                self.logger.warning('failed to write {} on disk!'.format(img_path), exc_info=True)
                 time.sleep(10)
         else:
             time.sleep(5)
 
-    @utils.loop_infinitely(time_gap=0)
+    @decorators.loop_infinitely(time_gap=0)
     def check_disk(self):
         """
         Checks the `storage_path` every 10 seconds to try uploading the stored images. If it failed, waits
         another 30 seconds.
         """
+        if not os.path.exists(self.storage_path):
+            os.mkdir(self.storage_path)
+
         if len(os.listdir(self.storage_path)) == 0:
             time.sleep(10)
         else:
@@ -298,13 +317,13 @@ class SkyScanner(Controller, ImageProcessor):
                 time_stamp = os.path.split(image)[-1].split('.')[0]
 
                 try:
-                    self.logger.debug('uploading {} to the server'.format(image))
+                    self.logger.debug('uploading {} to the server...'.format(image))
                     self.retry_uploading_image(image=image, time_stamp=time_stamp)  # try to upload
-                    self.logger.info('{} was successfully uploaded from disk to the server'.format(image))
+                    self.logger.info('{} was successfully uploaded from disk to the server.'.format(image))
                     os.remove(image)
-                    self.logger.info('{} was removed from disk'.format(image))
+                    self.logger.info('{} was removed from disk.'.format(image))
                 except Exception as e:
-                    self.logger.warning('failed to upload {} from disk to the server'.format(image),
+                    self.logger.warning('failed to upload {} from disk to the server!'.format(image),
                                         exc_info=True)
                     time.sleep(30)
 
@@ -317,7 +336,7 @@ class SkyScanner(Controller, ImageProcessor):
             self.daytime = True
 
             if not self.messenger.is_power_on():
-                self.messenger.switch_on()
+                self.messenger.turn_on_modem()
 
             sms_text = 'Good morning! :)\n' \
                        'SkyScanner just started.\n' \
@@ -338,7 +357,7 @@ class SkyScanner(Controller, ImageProcessor):
                 self.compress_storage()
 
             if not self.messenger.is_power_on():
-                self.messenger.switch_on()
+                self.messenger.turn_on_modem()
 
             sms_text = 'Good evening! :)\n' \
                        'SkyScanner is done for today.\n' \
@@ -346,7 +365,13 @@ class SkyScanner(Controller, ImageProcessor):
 
             self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
 
-    @utils.loop_infinitely(time_gap=30)
+        elif self.config.night_mode:
+            self.logger.debug('Device is set on night mode: Scanning night sky...')
+
+        else:
+            self.logger.debug('Device is on sleep mode: Waiting for the sunrise...')
+
+    @decorators.loop_infinitely(time_gap=60)
     def watch_time(self):
         """
         Recurrently checks the time to execute the sunrise/sunset operations. It also assigns a new day order
@@ -395,7 +420,7 @@ class SkyScanner(Controller, ImageProcessor):
         watcher = threading.Thread(name='Watcher', target=self.watch_time)
         jobs.append(watcher)
         self.logger.info('Initializing the uploader!')
-        uploader = threading.Thread(name='Uploader', target=self.execute_periodically)
+        uploader = threading.Thread(name='Uploader', target=self.execute_and_upload_periodically)
         jobs.append(uploader)
         self.logger.info('Initializing the retriever!')
         retriever = threading.Thread(name='Retriever', target=self.check_upload_stack)
@@ -418,3 +443,8 @@ class SkyScanner(Controller, ImageProcessor):
             self.run_offline()
         else:
             self.run_online()
+
+
+if __name__ == '__main__':
+    app = SkyScanner()
+    app.main()
