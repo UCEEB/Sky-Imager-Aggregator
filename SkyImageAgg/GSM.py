@@ -5,8 +5,9 @@ import logging
 from logging import NullHandler
 
 import RPi.GPIO as GPIO
+import serial
 
-from SkyImageAgg.Utilities import Utilities
+from SkyImageAgg import decorators
 
 
 class Modem:
@@ -39,7 +40,7 @@ class Modem:
         time.sleep(3)
         GPIO.output(self.pin, GPIO.HIGH)
 
-    def switch_on(self):
+    def turn_on_modem(self):
         """
 
         """
@@ -51,7 +52,7 @@ class Modem:
         else:
             self._logger.debug("Modem is already powered on...")
 
-    def switch_off(self):
+    def turn_off_modem(self):
         """
 
         """
@@ -75,9 +76,7 @@ class Modem:
         """
         if not self.serial_com:
             try:
-                self._logger.info(
-                    'Enabling serial port {} with baudrate {}'.format(port, baudrate)
-                )
+                self._logger.info('Enabling serial port {} with baudrate {}'.format(port, baudrate))
                 self.serial_com = serial.Serial(port, baudrate=baudrate, timeout=timeout)
             except Exception as e:
                 self._logger.exception('Serial port error: {}'.format(e))
@@ -85,7 +84,7 @@ class Modem:
             if not self.serial_com.isOpen():
                 self.serial_com.open()
 
-    @timeout(seconds=15, timeout_exception=TimeoutError, use_signals=False)
+    @decorators.timeout(seconds=15, timeout_exception=TimeoutError, use_signals=False)
     def is_power_on(self):
         """
 
@@ -118,12 +117,12 @@ class Modem:
         self.serial_com.write(command.encode() + b'\r\n')
         time.sleep(.2)
 
-    @Utilities.retry_on_exception(attempts=3, delay=3)
+    @decorators.retry_on_exception(attempts=3, delay=3)
     def force_switch_on(self):
         """
 
         """
-        self.switch_on()
+        self.turn_on_modem()
 
 
 class Messenger(Modem):
@@ -190,7 +189,7 @@ class GPRS(Modem):
             self._logger.error('no internet connection : {}'.format(e))
             return False
 
-    @timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
+    @decorators.timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
     def check_internet_connection(self):
         """
 
@@ -199,7 +198,7 @@ class GPRS(Modem):
             time.sleep(5)
         self._logger.info('Internet connection is enabled')
 
-    @Utilities.retry_on_exception(attempts=3, delay=120)
+    @decorators.retry_on_exception(attempts=3, delay=120)
     def enable_gprs(self):
         """
 
@@ -207,11 +206,11 @@ class GPRS(Modem):
         if not self.has_internet():
             try:
                 if not self.is_power_on():
-                    self.switch_on()
+                    self.turn_on_modem()
             except TimeoutError:
                 self.disable_gprs()
-                self.switch_off()  # restart modem
-                self.switch_on()
+                self.turn_off_modem()  # restart modem
+                self.turn_on_modem()
             time.sleep(1)
             os.system(
                 'sudo pon {}'.format(os.path.basename(self.ppp_config_file))
