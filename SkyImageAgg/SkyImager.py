@@ -319,6 +319,7 @@ class SkyScanner(Controller, ImageProcessor):
         """
         if not self.daytime:
             self.logger.debug('It\'s daytime!')
+            sync_time(self.config.ntp_server)
             self.daytime = True
 
             if not self.messenger.is_power_on():
@@ -337,6 +338,7 @@ class SkyScanner(Controller, ImageProcessor):
         """
         if self.daytime:
             self.logger.debug('Daytime is over!')
+            sync_time(self.config.ntp_server)
             self.daytime = False
 
             if self.config.autonomous_mode:
