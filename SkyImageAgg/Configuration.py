@@ -16,6 +16,7 @@ class Configuration:
         self.ext_storage_path = self.conf.get('SETTING', 'ext_storage_path')
         self.server = self.conf.get('SETTING', 'upload_server')
         self.log_path = self.conf.get('SETTING', 'log_path')
+        self.lcd_display = self.conf.getboolean('SETTING', 'lcd_display')
         self.log_to_console = self.conf.getboolean('SETTING', 'log_to_console')
         self.integrated_cam = self.conf.getboolean('SETTING', 'integrated_cam')
         self.camera_latitude = self.conf.getfloat('SETTING', 'camera_latitude')

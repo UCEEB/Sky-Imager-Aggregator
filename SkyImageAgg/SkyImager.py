@@ -83,6 +83,10 @@ class SkyScanner(Controller, ImageProcessor):
     config = Configuration(config_file=join(_parent_dir, 'config.ini'))
     logger = Logger(name='SkyScanner')
 
+    if config.lcd_display:
+        lcd = Logger(name='LCD')
+        lcd.add_display_handler(header='   SkyScanner   ')
+
     def __init__(self):
         """
         Initializes a SkyScanner instance.
@@ -107,6 +111,7 @@ class SkyScanner(Controller, ImageProcessor):
                     'host': os.uname()[1]
                 }
             )
+
         super().__init__(
             server=self.config.server,
             client_id=self.config.client_id,
@@ -199,10 +204,13 @@ class SkyScanner(Controller, ImageProcessor):
             # try to upload the image to the server, if failed, save it to storage
             try:
                 self.upload_image(preproc_img, time_stamp=cap_time)
-                self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
             except Exception:
-                self.logger.warning('Couldn\'t upload {}.jpg! Queueing for anothrt try!'.format(cap_time))
+                self.logger.warning('Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time))
+                self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), ' failed! '))
                 self.upload_stack.put((cap_time, img_path, preproc_img))
+
+            self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
+            self.lcd.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
 
     def execute_and_store(self):
         """
@@ -432,5 +440,3 @@ class SkyScanner(Controller, ImageProcessor):
 if __name__ == '__main__':
     app = SkyScanner()
     app.main()
-
-

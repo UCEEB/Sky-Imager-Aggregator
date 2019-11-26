@@ -1,14 +1,31 @@
+import time
 import logging
+from datetime import datetime
 from logging import Formatter
 from logging import NullHandler
 from logging import StreamHandler
 from logging.handlers import TimedRotatingFileHandler
-from datetime import datetime
 
+from i2c_lcd import lcd
 from influxdb import InfluxDBClient
 
 _format = Formatter(fmt='[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s')
 
+
+class DisplayLogHandler(logging.Handler):
+    def __init__(self, header=''):
+        super().__init__()
+        self.lcd = lcd()
+        self.header = header
+
+    def emit(self, record):
+        self.lcd.lcd_clear()
+        self.lcd.lcd_display_string(record.msg[0], line=1)
+        self.lcd.lcd_display_string(record.msg[1], line=2)
+        time.sleep(3)
+        self.lcd.lcd_clear()
+        self.lcd.lcd_display_string(self.header, line=1)
+        self.lcd.lcd_display_string('   Waiting...   ', line=2)
 
 class InfluxdbLogHandler(logging.Handler):
     def __init__(self, host, username, pwd, database, measurement, port=8086):
@@ -77,3 +94,9 @@ class Logger(logging.Logger):
         log_file = '{}-{}.log'.format(log_file, datetime.utcnow().strftime('%Y-%m-%d'))
         handler = TimedRotatingFileHandler(log_file, when='MIDNIGHT', backupCount=20)
         self.add_handler(handler, self.format)
+
+    def add_display_handler(self, header):
+        handler = DisplayLogHandler(header=header)
+        handler.setLevel(20)  # INFO level
+        self.add_handler(handler, Formatter(fmt='%(message)s'))
+
