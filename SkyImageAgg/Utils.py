@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 from timeout_decorator import timeout
 
@@ -71,20 +72,21 @@ def loop_infinitely(time_gap=3):
     `function`
         the recurring function that is decorated
     """
-
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             while True:
-                kick_off = time.time()
-                if time_gap != 0:
-                    f(*args, **kwargs)
-                    try:
-                        wait = time_gap - (time.time() - kick_off)
-                        time.sleep(wait)
-                    except ValueError:
-                        pass
-                else:
-                    f(*args, **kwargs)
+                kick_off = time.gmtime()
+                # start when second is a multiple of 10 (ends with 0)
+                if kick_off.tm_sec == 0:
+                    if time_gap != 0:
+                        f(*args, **kwargs)
+
+                        wait = time_gap - (int(time.time()) - time.mktime(kick_off)) - 1
+
+                        if wait > 0:
+                            time.sleep(wait)
+                    else:
+                        f(*args, **kwargs)
 
         return f_retry
 

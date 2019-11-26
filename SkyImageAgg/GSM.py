@@ -7,7 +7,7 @@ from logging import NullHandler
 import RPi.GPIO as GPIO
 import serial
 
-from SkyImageAgg import decorators
+from SkyImageAgg import Utils
 
 
 class Modem:
@@ -84,7 +84,7 @@ class Modem:
             if not self.serial_com.isOpen():
                 self.serial_com.open()
 
-    @decorators.timeout(seconds=15, timeout_exception=TimeoutError, use_signals=False)
+    @Utils.timeout(seconds=15, timeout_exception=TimeoutError, use_signals=False)
     def is_power_on(self):
         """
 
@@ -117,7 +117,7 @@ class Modem:
         self.serial_com.write(command.encode() + b'\r\n')
         time.sleep(.2)
 
-    @decorators.retry_on_exception(attempts=3, delay=3)
+    @Utils.retry_on_exception(attempts=3, delay=3)
     def force_switch_on(self):
         """
 
@@ -189,7 +189,7 @@ class GPRS(Modem):
             self._logger.error('no internet connection : {}'.format(e))
             return False
 
-    @decorators.timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
+    @Utils.timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
     def check_internet_connection(self):
         """
 
@@ -198,7 +198,7 @@ class GPRS(Modem):
             time.sleep(5)
         self._logger.info('Internet connection is enabled')
 
-    @decorators.retry_on_exception(attempts=3, delay=120)
+    @Utils.retry_on_exception(attempts=3, delay=120)
     def enable_gprs(self):
         """
 
