@@ -21,6 +21,45 @@ from timeout_decorator import timeout
 _parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
 
+def _encrypt_data(key, message):
+    """
+    Encrypts the given data/message using SHA-256 key.
+
+    Parameters
+    ----------
+    key : `bytes`
+        provided secret key
+    message : `str`
+        message that is intended to be hashed
+
+    Returns
+    -------
+    hashed data : `str`
+        the encrypted data
+    """
+    return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
+
+
+def _send_post_request(url, data):
+    """
+    Sends a post request to a given server/url
+
+    Parameters
+    ----------
+    url : `str`
+        server's url
+    data : `str`
+        data to be sent
+
+    Returns
+    -------
+    http response : `dict`
+    """
+    post_data = {
+        'data': data
+    }
+    return requests.post(url, data=post_data)
+
 class TwilightCalc:
     """
     A class responsible to manage the twilight times with respect to the geolocation.
@@ -148,46 +187,6 @@ class TwilightCalc:
             return True
 
 
-def _encrypt_data(key, message):
-    """
-    Encrypts the given data/message using SHA-256 key.
-
-    Parameters
-    ----------
-    key : `bytes`
-        provided secret key
-    message : `str`
-        message that is intended to be hashed
-
-    Returns
-    -------
-    hashed data : `str`
-        the encrypted data
-    """
-    return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
-
-
-def _send_post_request(url, data):
-    """
-    Sends a post request to a given server/url
-
-    Parameters
-    ----------
-    url : `str`
-        server's url
-    data : `str`
-        data to be sent
-
-    Returns
-    -------
-    http response : `dict`
-    """
-    post_data = {
-        'data': data
-    }
-    return requests.post(url, data=post_data)
-
-
 class Controller(TwilightCalc):
     """
     A class responsible for performing IO and network operations. It inherits properties from `TimeManager` and
@@ -223,8 +222,8 @@ class Controller(TwilightCalc):
         the SHA-256 key provided by the vendor.
     storage_path : `str`
         the path to the storage directory.
-    ext_storage_path : `str`
-        the path to the external storage directory.
+    temp_storage_path : `str`
+        the path to the temporary storage directory.
     time_format : `str`
         the time format.
     autonomous_mode : `boolean`
@@ -267,8 +266,8 @@ class Controller(TwilightCalc):
             auth_key,
             storage_path,
             time_format,
+            temp_storage_path,
             logger=None,
-            ext_storage_path=None
     ):
         super().__init__(
             latitude=latitude,
@@ -287,7 +286,7 @@ class Controller(TwilightCalc):
         self.server = server
         self.time_format = time_format
         self.storage_path = storage_path
-        self.ext_storage_path = ext_storage_path
+        self.temp_storage_path = temp_storage_path
 
     def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
         """
