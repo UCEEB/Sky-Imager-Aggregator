@@ -150,8 +150,8 @@ class SkyScanner(Controller, ImageProcessor):
         )
         self.messenger = Messenger(logger=self.logger)
         self.gprs = GPRS(ppp_config_file=self.config.GSM_ppp_config_file, logger=self.logger)
-        self.upload_stack = LifoQueue()
-        self.write_stack = LifoQueue()
+        self.upload_stack = LifoQueue(maxsize=20)
+        self.write_stack = LifoQueue(maxsize=20)
         self.day_of_year = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
         self.daytime = True
@@ -209,7 +209,12 @@ class SkyScanner(Controller, ImageProcessor):
             except Exception:
                 self.logger.warning('Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time), exc_info=1)
                 self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), ' failed! '))
-                self.upload_stack.put((cap_time, img_path, preproc_img))
+                if not self.upload_stack.full():
+                    self.upload_stack.put((cap_time, img_path, preproc_img))
+                else:
+                    self.logger.info('The upload stack is full! Storing the image...')
+                    self.save_as_pic(preproc_img, img_path)
+                    self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
 
     def execute_and_store(self):
         """
@@ -226,7 +231,7 @@ class SkyScanner(Controller, ImageProcessor):
                 self.save_as_pic(preproc_img, img_path)
                 self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
             except Exception:
-                self.logger.error('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=1)
+                self.logger.critical('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=1)
 
     def send_thumbnail(self):
         """
@@ -278,7 +283,13 @@ class SkyScanner(Controller, ImageProcessor):
                         'retrying to upload {}.jpg failed! Queueing for saving on disk...'.format(cap_time),
                         exc_info=1
                     )
-                    self.write_stack.put((cap_time, img_path, img_arr))
+                    if not self.write_stack.full():
+                        self.write_stack.put((cap_time, img_path, img_arr))
+                    else:
+                        self.logger.info('The write stack is full! Storing the image...')
+                        self.save_as_pic(preproc_img, img_path)
+                        self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
+
 
     def check_write_stack(self):
         """
@@ -292,7 +303,7 @@ class SkyScanner(Controller, ImageProcessor):
                     self.save_as_pic(image_arr=img_arr, output_name=img_path)
                     self.logger.info('{} was successfully written on disk.'.format(img_path))
                 except Exception as e:
-                    self.logger.warning('failed to write {} on disk!'.format(img_path), exc_info=1)
+                    self.logger.critical('failed to write {} on disk!'.format(img_path), exc_info=1)
                     time.sleep(10)
 
     def check_disk(self):
