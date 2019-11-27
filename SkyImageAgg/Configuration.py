@@ -13,7 +13,7 @@ class Configuration:
         self.cam_username = self.conf.get('SETTING', 'cam_username')
         self.cam_pwd = self.conf.get('SETTING', 'cam_password')
         self.storage_path = self.conf.get('SETTING', 'storage_path')
-        self.ext_storage_path = self.conf.get('SETTING', 'ext_storage_path')
+        self.temp_storage_path = self.conf.get('SETTING', 'temp_storage_path')
         self.server = self.conf.get('SETTING', 'upload_server')
         self.log_path = self.conf.get('SETTING', 'log_path')
         self.lcd_display = self.conf.getboolean('SETTING', 'lcd_display')

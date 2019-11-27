@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import datetime as dt
 import glob
+import shutil
 import os
 import time
 from os.path import dirname
@@ -120,7 +121,7 @@ class SkyScanner(Controller, ImageProcessor):
             altitude=self.config.camera_altitude,
             auth_key=self.config.key,
             storage_path=self.config.storage_path,
-            ext_storage_path=self.config.ext_storage_path,
+            temp_storage_path=self.config.temp_storage_path,
             time_format=self.config.time_format,
             logger=self.logger
         )
@@ -169,7 +170,7 @@ class SkyScanner(Controller, ImageProcessor):
         # store the current time according to the time format
         cap_time = dt.datetime.utcnow().strftime(self.config.time_format)
         # set the path to save the image
-        output_path = os.path.join(self.storage_path, cap_time)
+        output_path = os.path.join(self.temp_storage_path, cap_time)
         return cap_time, output_path, self.cam.cap_pic()
 
     def preprocess(self, image_arr):
@@ -207,7 +208,9 @@ class SkyScanner(Controller, ImageProcessor):
                 self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
                 self.lcd.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
             except Exception:
-                self.logger.warning('Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time), exc_info=1)
+                self.logger.warning(
+                    'Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time), exc_info=1
+                )
                 self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), ' failed! '))
                 if not self.upload_stack.full():
                     self.upload_stack.put((cap_time, img_path, preproc_img))
@@ -272,39 +275,35 @@ class SkyScanner(Controller, ImageProcessor):
         uploaded to the server.
         """
         if not self.upload_stack.empty():
-            while not self.upload_stack.empty():
-                cap_time, img_path, img_arr = self.upload_stack.get()
+            cap_time, img_path, img_arr = self.upload_stack.get()
 
-                try:
-                    self.retry_uploading_image(image=img_arr, time_stamp=cap_time)
-                    self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
-                except Exception as e:
-                    self.logger.warning(
-                        'retrying to upload {}.jpg failed! Queueing for saving on disk...'.format(cap_time),
-                        exc_info=1
-                    )
-                    if not self.write_stack.full():
-                        self.write_stack.put((cap_time, img_path, img_arr))
-                    else:
-                        self.logger.info('The write stack is full! Storing the image...')
-                        self.save_as_pic(preproc_img, img_path)
-                        self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
-
+            try:
+                self.retry_uploading_image(image=img_arr, time_stamp=cap_time)
+                self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
+            except Exception as e:
+                self.logger.warning(
+                    'retrying to upload {}.jpg failed! Queueing for saving on disk...'.format(cap_time),
+                    exc_info=1
+                )
+                if not self.write_stack.full():
+                    self.write_stack.put((cap_time, img_path, img_arr))
+                else:
+                    self.logger.info('the write stack is full! Storing the image...')
+                    self.save_as_pic(img_arr, img_path)
+                    self.logger.debug('{}.jpg was successfully stored!'.format(cap_time))
 
     def check_write_stack(self):
         """
         Checks the `write_stack` every 5 seconds to save the images waiting in `write_stack' in `storage_path`.
         """
         if not self.write_stack.empty():
-            while not self.write_stack.empty():
-                cap_time, img_path, img_arr = self.write_stack.get()
+            cap_time, img_path, img_arr = self.write_stack.get()
 
-                try:
-                    self.save_as_pic(image_arr=img_arr, output_name=img_path)
-                    self.logger.info('{} was successfully written on disk.'.format(img_path))
-                except Exception as e:
-                    self.logger.critical('failed to write {} on disk!'.format(img_path), exc_info=1)
-                    time.sleep(10)
+            try:
+                self.save_as_pic(image_arr=img_arr, output_name=img_path)
+                self.logger.info('{} was successfully stored in temporary storage.'.format(img_path))
+            except Exception as e:
+                self.logger.critical('failed to store {} in temporary storage!'.format(img_path), exc_info=1)
 
     def check_disk(self):
         """
@@ -312,24 +311,28 @@ class SkyScanner(Controller, ImageProcessor):
         another 30 seconds.
         """
         if not os.path.exists(self.storage_path):
-            os.mkdir(self.storage_path)
+            os.mkdir(self.storage_path)  # create the main storage if not exist
 
-        if len(os.listdir(self.storage_path)) == 0:
-            time.sleep(10)
+        if not os.path.exists(self.temp_storage_path):
+            os.mkdir(self.temp_storage_path)  # create the temp storage if not exist
+
+        if len(os.listdir(self.temp_storage_path)) == 0:
+            pass
+
         else:
-            for image in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
-                time_stamp = os.path.split(image)[-1].split('.')[0]
+            for img in glob.iglob(os.path.join(self.temp_storage_path, '*.jpg')):
+                timestamp = os.path.split(img)[-1].split('.')[0]
 
                 try:
-                    self.logger.debug('uploading {} to the server...'.format(image))
-                    self.retry_uploading_image(image=image, time_stamp=time_stamp)  # try to upload
-                    self.logger.info('{} was successfully uploaded from disk to the server.'.format(image))
-                    os.remove(image)
-                    self.logger.info('{} was removed from disk.'.format(image))
+                    self.logger.debug('retrying to upload {} to the server...'.format(img))
+                    self.retry_uploading_image(image=img, time_stamp=timestamp)  # try to re-upload
+                    self.logger.debug('{} was successfully uploaded from SD card to the server.'.format(img))
+                    os.remove(img)
+                    self.logger.debug('{} was removed from disk.'.format(img))
                 except Exception as e:
-                    self.logger.warning('failed to upload {} from disk to the server!'.format(image),
-                                        exc_info=1)
-                    time.sleep(30)
+                    self.logger.info('retry failed! moving {} to main storage'.format(img), exc_info=1)
+                    shutil.move(img, self.storage_path)
+
 
     def do_sunrise_operations(self):
         """
@@ -426,14 +429,14 @@ class SkyScanner(Controller, ImageProcessor):
         self.logger.info('Uploader job started: Recurring every {} seconds.'.format(self.config.cap_mod))
         self.sched.add_job(self.execute_and_upload, 'cron', second='*/{}'.format(self.config.cap_mod))
 
-        self.logger.info('Retriever job started: Recurring every minute.')
-        self.sched.add_job(self.check_upload_stack, 'cron', minute='*/1')
+        self.logger.info('Retriever job started: Recurring every 15 seconds.')
+        self.sched.add_job(self.check_upload_stack, 'cron', second='*/15')
 
-        self.logger.info('Writer job started: Recurring every minute.')
-        self.sched.add_job(self.check_write_stack, 'cron', minute='*/1')
+        self.logger.info('Writer job started: Recurring every 5 seconds.')
+        self.sched.add_job(self.check_write_stack, 'cron', second='*/5')
 
-        self.logger.info('Disk checker job started: Recurring every minute.')
-        self.sched.add_job(self.check_disk, 'cron', minute='*/1')
+        self.logger.info('Disk checker job started: Recurring every 10 minute.')
+        self.sched.add_job(self.check_disk, 'cron', minute='*/10')
 
         self.sched.start()
 
