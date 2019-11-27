@@ -70,8 +70,6 @@ class SkyScanner(Controller, ImageProcessor):
         an instance of `GPRS` class for connecting the device to internet through GPRS service.
     upload_stack : `LifoQueue`
         a LIFO stack for storing failed uploads to be accessible by uploader job.
-    write_stack : `LifoQueue`
-        a LIFO stack for queuing failed re-uploads to be written on the disk by writer job.
     day_of_year : `int`
         the day of year (DOY) is the sequential day number starting with day 1 on January 1st.
     sunrise : `datetime.time`
@@ -152,7 +150,6 @@ class SkyScanner(Controller, ImageProcessor):
         self.messenger = Messenger(logger=self.logger)
         self.gprs = GPRS(ppp_config_file=self.config.GSM_ppp_config_file, logger=self.logger)
         self.upload_stack = LifoQueue(maxsize=20)
-        self.write_stack = LifoQueue(maxsize=20)
         self.day_of_year = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
         self.daytime = True
@@ -282,30 +279,13 @@ class SkyScanner(Controller, ImageProcessor):
                 self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
             except Exception as e:
                 self.logger.warning(
-                    'retrying to upload {}.jpg failed! Queueing for saving on disk...'.format(cap_time),
+                    'retrying to upload {}.jpg failed! Storing in temporary storage...'.format(cap_time),
                     exc_info=1
                 )
-                if not self.write_stack.full():
-                    self.write_stack.put((cap_time, img_path, img_arr))
-                else:
-                    self.logger.info('the write stack is full! Storing the image...')
-                    self.save_as_pic(img_arr, img_path)
-                    self.logger.debug('{}.jpg was successfully stored!'.format(cap_time))
-
-    def check_write_stack(self):
-        """
-        Checks the `write_stack` every 5 seconds to save the images waiting in `write_stack' in `storage_path`.
-        """
-        if not self.write_stack.empty():
-            cap_time, img_path, img_arr = self.write_stack.get()
-
-            try:
                 self.save_as_pic(image_arr=img_arr, output_name=img_path)
-                self.logger.info('{} was successfully stored in temporary storage.'.format(img_path))
-            except Exception as e:
-                self.logger.critical('failed to store {} in temporary storage!'.format(img_path), exc_info=1)
+                self.logger.debug('{}.jpg was successfully stored!'.format(cap_time))
 
-    def check_disk(self):
+    def check_temp_storage(self):
         """
         Checks the `storage_path` every 10 seconds to try uploading the stored images. If it failed, waits
         another 30 seconds.
@@ -432,11 +412,8 @@ class SkyScanner(Controller, ImageProcessor):
         self.logger.info('Retriever job started: Recurring every 15 seconds.')
         self.sched.add_job(self.check_upload_stack, 'cron', second='*/15')
 
-        self.logger.info('Writer job started: Recurring every 5 seconds.')
-        self.sched.add_job(self.check_write_stack, 'cron', second='*/5')
-
-        self.logger.info('Disk checker job started: Recurring every 10 minute.')
-        self.sched.add_job(self.check_disk, 'cron', minute='*/10')
+        self.logger.info('Disk checker job started: Recurring every 15 minute.')
+        self.sched.add_job(self.check_temp_storage, 'cron', minute='*/15')
 
         self.sched.start()
 
