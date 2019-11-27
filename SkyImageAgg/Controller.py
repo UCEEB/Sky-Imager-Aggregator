@@ -356,7 +356,7 @@ class Controller(TwilightCalc):
         """
         self._upload_to_server(thumbnail, time_stamp=time_stamp)
 
-    @timeout(6, timeout_exception=TimeoutError, use_signals=False)
+    @timeout(15, timeout_exception=TimeoutError, use_signals=False)
     def upload_image(self, image, time_stamp=datetime.utcnow()):
         """
         Uploads the image to the server with a timeout limit.
