@@ -204,13 +204,12 @@ class SkyScanner(Controller, ImageProcessor):
             # try to upload the image to the server, if failed, save it to storage
             try:
                 self.upload_image(preproc_img, time_stamp=cap_time)
+                self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
+                self.lcd.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
             except Exception:
-                self.logger.warning('Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time))
+                self.logger.warning('Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time), exc_info=1)
                 self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), ' failed! '))
                 self.upload_stack.put((cap_time, img_path, preproc_img))
-
-            self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
-            self.lcd.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
 
     def execute_and_store(self):
         """
@@ -227,7 +226,7 @@ class SkyScanner(Controller, ImageProcessor):
                 self.save_as_pic(preproc_img, img_path)
                 self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
             except Exception:
-                self.logger.error('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=True)
+                self.logger.error('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=1)
 
     def send_thumbnail(self):
         """
@@ -246,7 +245,7 @@ class SkyScanner(Controller, ImageProcessor):
                 self.upload_thumbnail(thumbnail, time_stamp=cap_time)
                 self.logger.info('Uploading {}.jpg thumbnail was successful!'.format(cap_time))
             except Exception:
-                self.logger.error('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=True)
+                self.logger.error('Couldn\'t upload {}.jpg thumbnail! '.format(cap_time), exc_info=1)
 
     @Utils.retry_on_failure(attempts=2)
     def retry_uploading_image(self, image, time_stamp):
@@ -277,7 +276,7 @@ class SkyScanner(Controller, ImageProcessor):
                 except Exception as e:
                     self.logger.warning(
                         'retrying to upload {}.jpg failed! Queueing for saving on disk...'.format(cap_time),
-                        exc_info=True
+                        exc_info=1
                     )
                     self.write_stack.put((cap_time, img_path, img_arr))
 
@@ -293,7 +292,7 @@ class SkyScanner(Controller, ImageProcessor):
                     self.save_as_pic(image_arr=img_arr, output_name=img_path)
                     self.logger.info('{} was successfully written on disk.'.format(img_path))
                 except Exception as e:
-                    self.logger.warning('failed to write {} on disk!'.format(img_path), exc_info=True)
+                    self.logger.warning('failed to write {} on disk!'.format(img_path), exc_info=1)
                     time.sleep(10)
 
     def check_disk(self):
@@ -318,7 +317,7 @@ class SkyScanner(Controller, ImageProcessor):
                     self.logger.info('{} was removed from disk.'.format(image))
                 except Exception as e:
                     self.logger.warning('failed to upload {} from disk to the server!'.format(image),
-                                        exc_info=True)
+                                        exc_info=1)
                     time.sleep(30)
 
     def do_sunrise_operations(self):
