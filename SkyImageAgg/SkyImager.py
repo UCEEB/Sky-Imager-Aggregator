@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 import datetime as dt
 import glob
-import shutil
 import os
-import time
+import shutil
 from os.path import dirname
 from os.path import join
 from queue import LifoQueue
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 
 from SkyImageAgg import Utils
 from SkyImageAgg.Collectors.GeoVisionCam import GeoVisionCam as IPCamera
@@ -22,8 +22,11 @@ from SkyImageAgg.GSM import Messenger
 from SkyImageAgg.Logger import Logger
 from SkyImageAgg.Preprocessor import ImageProcessor
 
-_parent_dir = dirname(dirname(__file__))
+_base_dir = dirname(dirname(__file__))
 
+executors = {
+    'default': ThreadPoolExecutor(30),   # max threads: 90
+}
 
 def sync_time(ntp_server):
     """
@@ -80,12 +83,12 @@ class SkyScanner(Controller, ImageProcessor):
     daytime : `boolean`
         True if daytime, false otherwise.
     """
-    config = Configuration(config_file=join(_parent_dir, 'config.ini'))
+    config = Configuration(config_file=join(_base_dir, 'config.ini'))
     logger = Logger(name='SkyScanner')
 
     if config.lcd_display:
         lcd = Logger(name='LCD')
-        lcd.add_display_handler(header='   SkyScanner   ')
+        lcd.add_display_handler(header='___SkyScanner___')
 
     def __init__(self):
         """
@@ -122,9 +125,17 @@ class SkyScanner(Controller, ImageProcessor):
             storage_path=self.config.storage_path,
             temp_storage_path=self.config.temp_storage_path,
             time_format=self.config.time_format,
-            logger=self.logger
+            logger=None,
+            twilight_coll_in_memory=False,
+            twilight_coll_file=join(_base_dir, 'twilight_times.pkl')
         )
+
         sync_time(self.config.ntp_server)
+
+        if self.has_location_changed():
+            # if device location changed or twilight times have not been collected
+            self.logger.info('Collecting twilight times within a year...')
+            self.collect_annual_twilight_times()
 
         if self.config.integrated_cam:
             self.cam = RpiCam()
@@ -160,7 +171,7 @@ class SkyScanner(Controller, ImageProcessor):
         self.day_of_year = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
         self.daytime = False
-        self.sched = BlockingScheduler()
+        self.sched = BlockingScheduler(executors=executors)
 
     def scan(self):
         """
@@ -211,17 +222,20 @@ class SkyScanner(Controller, ImageProcessor):
                 self.upload_image(preproc_img, time_stamp=cap_time)
                 self.logger.info('Uploading {}.jpg was successful!'.format(cap_time))
                 self.lcd.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
-            except Exception:
-                self.logger.warning(
-                    'Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time), exc_info=1
-                )
-                self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), ' failed! '))
+            except ConnectionError:
+                self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), '    failed!!!  '))
+
                 if not self.upload_stack.full():
+                    self.logger.warning(
+                        'Couldn\'t upload {}.jpg! Queueing for another try!'.format(cap_time),
+                        exc_info=1
+                    )
                     self.upload_stack.put((cap_time, img_path, preproc_img))
                 else:
                     self.logger.info('The upload stack is full! Storing the image...')
                     self.save_as_pic(preproc_img, img_path)
                     self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
+                    self.lcd.info(('{}.jpg'.format(cap_time[-11:]), '    stored...   '))
 
     def execute_and_store(self):
         """
@@ -237,8 +251,10 @@ class SkyScanner(Controller, ImageProcessor):
             try:
                 self.save_as_pic(preproc_img, img_path)
                 self.logger.info('{}.jpg was stored successfully!'.format(cap_time))
+                self.lcd.info(('{}.jpg'.format(cap_time[-11:]), '    stored...   '))
             except Exception:
                 self.logger.critical('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=1)
+                self.lcd.warning(('{}.jpg'.format(cap_time[-11:]), '     failed!!!  '))
 
     def send_thumbnail(self):
         """
@@ -275,7 +291,7 @@ class SkyScanner(Controller, ImageProcessor):
 
     def check_upload_stack(self):
         """
-        Checks the `upload_stack` every 5 seconds to retry uploading the images that were not successfully
+        Checks the `upload_stack` every 15 seconds to retry uploading the images that were not successfully
         uploaded to the server.
         """
         if not self.upload_stack.empty():
@@ -286,36 +302,27 @@ class SkyScanner(Controller, ImageProcessor):
                 self.logger.info('retrying to upload {}.jpg was successful!'.format(cap_time))
             except Exception as e:
                 self.logger.warning(
-                    'retrying to upload {}.jpg failed! Storing in temporary storage...'.format(cap_time),
+                    'retrying to upload {}.jpg failed! Storing in temp storage...'.format(cap_time),
                     exc_info=1
                 )
                 self.save_as_pic(image_arr=img_arr, output_name=img_path)
-                self.logger.debug('{}.jpg was successfully stored!'.format(cap_time))
+                self.logger.debug('{}.jpg was successfully stored in temp storage!'.format(cap_time))
 
     def check_temp_storage(self):
         """
         Checks the `storage_path` every 10 seconds to try uploading the stored images. If it failed, waits
         another 30 seconds.
         """
-        if not os.path.exists(self.storage_path):
-            os.mkdir(self.storage_path)  # create the main storage if not exist
-
-        if not os.path.exists(self.temp_storage_path):
-            os.mkdir(self.temp_storage_path)  # create the temp storage if not exist
-
-        if len(os.listdir(self.temp_storage_path)) == 0:
-            pass
-
-        else:
+        if not len(os.listdir(self.temp_storage_path)) == 0:
             for img in glob.iglob(os.path.join(self.temp_storage_path, '*.jpg')):
                 timestamp = os.path.split(img)[-1].split('.')[0]
-
                 try:
-                    self.logger.debug('retrying to upload {} to the server...'.format(img))
                     self.retry_uploading_image(image=img, time_stamp=timestamp)  # try to re-upload
-                    self.logger.debug('{} was successfully uploaded from SD card to the server.'.format(img))
+                    self.logger.debug(
+                        '{} was successfully uploaded from temp storage to the server.'.format(img)
+                    )
                     os.remove(img)
-                    self.logger.debug('{} was removed from disk.'.format(img))
+                    self.logger.debug('{} was removed from temp storage.'.format(img))
                 except Exception as e:
                     self.logger.info('retry failed! moving {} to main storage'.format(img), exc_info=1)
                     shutil.move(img, self.storage_path)
@@ -347,11 +354,11 @@ class SkyScanner(Controller, ImageProcessor):
                 if not self.messenger.is_power_on():
                     self.messenger.turn_on_modem()
 
-            sms_text = 'Good morning! :)\n' \
-                       'SkyScanner just started.\n' \
-                       'Available space: {} GB'.format(self.get_available_free_space())
+                sms_text = 'Good morning! :)\n' \
+                           'SkyScanner just started.\n' \
+                           'Available space: {} GB'.format(self.get_available_free_space())
 
-            self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+                self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
 
     def do_sunset_operations(self):
         """
@@ -371,11 +378,11 @@ class SkyScanner(Controller, ImageProcessor):
                 if not self.messenger.is_power_on():
                     self.messenger.turn_on_modem()
 
-            sms_text = 'Good evening! :)\n' \
-                       'SkyScanner is done for today.\n' \
-                       'Available space: {} GB'.format(self.get_available_free_space())
+                sms_text = 'Good evening! :)\n' \
+                           'SkyScanner is done for today.\n' \
+                           'Available space: {} GB'.format(self.get_available_free_space())
 
-            self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
+                self.messenger.send_sms(self.config.GSM_phone_no, sms_text)
 
         elif self.config.night_mode:
             self.logger.debug('Device is set on night mode: Scanning night sky...')
