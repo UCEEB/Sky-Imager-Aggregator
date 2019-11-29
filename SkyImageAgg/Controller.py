@@ -9,16 +9,12 @@ import pickle
 import shutil
 import zipfile
 from datetime import datetime
-from os.path import exists
-from os.path import join
 
 import numpy as np
 import requests
 from astral import Astral
 from astral import Location
 from timeout_decorator import timeout
-
-_parent_dir_ = os.path.dirname(os.path.dirname(__file__))
 
 
 def _encrypt_data(key, message):
@@ -83,15 +79,25 @@ class TwilightCalc:
         location altitude
     """
 
-    def __init__(self, latitude, longitude, altitude):
+    def __init__(
+            self,
+            latitude,
+            longitude,
+            altitude,
+            twilight_coll_in_memory=True,
+            twilight_coll_file=None
+    ):
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
+        self.twilight_coll = twilight_coll_file
 
-        if not exists(join(_parent_dir_, 'twilight_times.pkl')):
-            if self.has_location_changed():
-                print('Collecting twilight times within a year for your location...')
-                self.collect_annual_twilight_times()
+        if twilight_coll_in_memory and twilight_coll_file:
+            raise ValueError('store_in_memory and twilight_coll_file parameters cannot be both False or True!')
+
+        if twilight_coll_in_memory:
+            # collect the times and store it as an attribute
+            self.twilight_coll = self.collect_annual_twilight_times()
 
     def find_sunrise_and_sunset_time(self, date=None):
         """
@@ -148,13 +154,13 @@ class TwilightCalc:
         for date in dates:
             coll[date.timetuple().tm_yday] = self.find_sunrise_and_sunset_time(date=date)
 
-        with open(join(_parent_dir_, 'twilight_times.pkl'), 'wb') as f:
-            pickle.dump(coll, f, protocol=pickle.HIGHEST_PROTOCOL)
+        if isinstance(self.twilight_coll, str):
+            with open(self.twilight_coll, 'wb') as f:
+                pickle.dump(coll, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         return coll
 
-    @staticmethod
-    def get_twilight_times_by_day(day_of_year):
+    def get_twilight_times_by_day(self, day_of_year):
         """
         Gets the sunrise/sunset times collected previously given the day of the year.
 
@@ -168,9 +174,17 @@ class TwilightCalc:
         tuple of twilight times : `(datetime.time, datetime.time)`
             sunrise and sunset times
         """
-        with open(join(_parent_dir_, 'twilight_times.pkl'), 'rb') as handle:
-            col = pickle.load(handle)
-        return col[day_of_year]
+        if isinstance(self.twilight_coll, str):
+            if not os.path.exists(self.twilight_coll):
+                self.collect_annual_twilight_times()
+
+            with open(self.twilight_coll, 'rb') as handle:
+                coll = pickle.load(handle)
+
+            return coll[day_of_year]
+        else:
+
+            return self.twilight_coll[day_of_year]
 
     def has_location_changed(self):
         """
@@ -183,7 +197,7 @@ class TwilightCalc:
         try:
             if self.get_twilight_times_by_day(-1) == (self.latitude, self.longitude):
                 return False
-        finally:
+        except Exception:
             return True
 
 
