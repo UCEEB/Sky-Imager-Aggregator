@@ -36,6 +36,7 @@ class Configuration:
         self.autonomous_mode = self.conf.getboolean('SETTING', 'autonomous_mode')
         self.light_sensor = self.conf.getboolean('SETTING', 'light_sensor')
 
+        self.GSM_module = self.conf.getboolean('GSM', 'mode')
         self.GSM_port = self.conf.get('GSM', 'port')
         self.GSM_phone_no = self.conf.get('GSM', 'phone_no')
         self.GSM_send_thumbnail = self.conf.getboolean('GSM', 'send_thumbnail')

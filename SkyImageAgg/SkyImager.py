@@ -17,6 +17,7 @@ from SkyImageAgg.Collectors.RpiCam import RpiCam
 from SkyImageAgg.Configuration import Configuration
 from SkyImageAgg.Controller import Controller
 from SkyImageAgg.GSM import GPRS
+from SkyImageAgg.GSM import has_internet
 from SkyImageAgg.GSM import Messenger
 from SkyImageAgg.Logger import Logger
 from SkyImageAgg.Preprocessor import ImageProcessor
@@ -147,8 +148,14 @@ class SkyScanner(Controller, ImageProcessor):
             output_size=self.config.output_image_size,
             jpeg_quality=self.config.jpeg_quality
         )
-        self.messenger = Messenger(logger=self.logger)
-        self.gprs = GPRS(ppp_config_file=self.config.GSM_ppp_config_file, logger=self.logger)
+
+        if self.config.GSM_module:
+            self.messenger = Messenger(logger=self.logger)
+            self.gprs = GPRS(ppp_config_file=self.config.GSM_ppp_config_file, logger=self.logger)
+        else:
+            self.messenger = None
+            self.gprs = None
+
         self.upload_stack = LifoQueue(maxsize=20)
         self.day_of_year = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
@@ -323,8 +330,9 @@ class SkyScanner(Controller, ImageProcessor):
             sync_time(self.config.ntp_server)
             self.daytime = True
 
-            if not self.messenger.is_power_on():
-                self.messenger.turn_on_modem()
+            if self.config.GSM_module:
+                if not self.messenger.is_power_on():
+                    self.messenger.turn_on_modem()
 
             sms_text = 'Good morning! :)\n' \
                        'SkyScanner just started.\n' \
@@ -345,8 +353,9 @@ class SkyScanner(Controller, ImageProcessor):
             if self.config.autonomous_mode:
                 self.compress_storage()
 
-            if not self.messenger.is_power_on():
-                self.messenger.turn_on_modem()
+            if self.config.GSM_module:
+                if not self.messenger.is_power_on():
+                    self.messenger.turn_on_modem()
 
             sms_text = 'Good evening! :)\n' \
                        'SkyScanner is done for today.\n' \
