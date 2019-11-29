@@ -274,20 +274,15 @@ class Controller(TwilightCalc):
             self,
             server,
             client_id,
-            latitude,
-            longitude,
-            altitude,
+            *args,
             auth_key,
             storage_path,
             time_format,
             temp_storage_path,
             logger=None,
+            **kwargs
     ):
-        super().__init__(
-            latitude=latitude,
-            longitude=longitude,
-            altitude=altitude,
-        )
+        super(Controller, self).__init__(*args, **kwargs)
 
         if not logger:
             # Null logger if no logger is defined as parameter
