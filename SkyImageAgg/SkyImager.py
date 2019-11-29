@@ -320,6 +320,19 @@ class SkyScanner(Controller, ImageProcessor):
                     self.logger.info('retry failed! moving {} to main storage'.format(img), exc_info=1)
                     shutil.move(img, self.storage_path)
 
+    def check_main_storage(self):
+        if has_internet():
+            for img in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
+                timestamp = os.path.split(img)[-1].split('.')[0]
+                try:
+                    self.upload_image(image=img, time_stamp=timestamp)
+                    self.logger.debug(
+                        '{} was successfully uploaded!'.format(img)
+                    )
+                    os.remove(img)
+                    self.logger.debug('{} was removed from main storage.'.format(img))
+                except Exception as e:
+                    self.logger.exception('retry failed!'.format(img), exc_info=1)
 
     def do_sunrise_operations(self):
         """
@@ -349,6 +362,7 @@ class SkyScanner(Controller, ImageProcessor):
             self.logger.debug('Daytime is over!')
             sync_time(self.config.ntp_server)
             self.daytime = False
+            self.check_main_storage()
 
             if self.config.autonomous_mode:
                 self.compress_storage()
