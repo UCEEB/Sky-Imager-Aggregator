@@ -1,13 +1,22 @@
+import logging
 import os
 import socket
 import time
-import logging
 from logging import NullHandler
 
 import RPi.GPIO as GPIO
 import serial
 
 from SkyImageAgg import Utils
+
+
+def has_internet(self, host="8.8.8.8", port=53, timeout=20):
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except Exception:
+        return False
 
 
 class Modem:
@@ -168,33 +177,12 @@ class GPRS(Modem):
         super().__init__(port=port, pin=pin, logger=logger)
         self.ppp_config_file = ppp_config_file
 
-    def has_internet(self, host="8.8.8.8", port=53, timeout=20):
-        """
-
-        Parameters
-        ----------
-        host
-        port
-        timeout
-
-        Returns
-        -------
-
-        """
-        try:
-            socket.setdefaulttimeout(timeout)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-            return True
-        except Exception as e:
-            self._logger.error('no internet connection : {}'.format(e))
-            return False
-
     @Utils.timeout(seconds=420, timeout_exception=TimeoutError, use_signals=False)
     def check_internet_connection(self):
         """
 
         """
-        while not self.has_internet():
+        while not has_internet():
             time.sleep(5)
         self._logger.info('Internet connection is enabled')
 
@@ -203,7 +191,7 @@ class GPRS(Modem):
         """
 
         """
-        if not self.has_internet():
+        if not has_internet():
             try:
                 if not self.is_power_on():
                     self.turn_on_modem()
