@@ -8,6 +8,8 @@ import os
 import pickle
 import shutil
 import zipfile
+import logging
+from logging import NullHandler
 from datetime import datetime
 
 import numpy as np
@@ -297,6 +299,12 @@ class Controller(TwilightCalc):
         self.storage_path = storage_path
         self.temp_storage_path = temp_storage_path
 
+        if not os.path.exists(self.storage_path):
+            os.mkdir(self.storage_path)  # create the main storage if not exist
+
+        if not os.path.exists(self.temp_storage_path):
+            os.mkdir(self.temp_storage_path)  # create the temp storage if not exist
+
     def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
         """
         Makes a json out of the encoded image and its metadata.
@@ -342,13 +350,8 @@ class Controller(TwilightCalc):
         try:
             response = _send_post_request('{}{}'.format(self.server, signature), json_data)
             json_response = json.loads(response.text)
-
-            if json_response['status'] != 'ok':
-                raise ConnectionError(json_response['message'])
-
         except Exception as e:
-            self._logger.exception(e)
-            raise ConnectionError
+            raise ConnectionError(e)
 
     @timeout(60, timeout_exception=TimeoutError, use_signals=False)
     def upload_thumbnail(self, thumbnail, time_stamp=datetime.utcnow()):
@@ -396,10 +399,7 @@ class Controller(TwilightCalc):
         """
         curr_time = dt.datetime.utcnow().strftime(self.time_format)
         zip_archive = '{}.zip'.format(curr_time)
-        try:
-            with zipfile.ZipFile(os.path.join(self.storage_path, zip_archive), 'w') as zf:
-                self._logger.debug('Compressing the images in the storage...')
-                for file in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
-                    zf.write(filename=file)
-        except Exception as e:
-            self._logger.exception(e)
+
+        with zipfile.ZipFile(os.path.join(self.storage_path, zip_archive), 'w') as zf:
+            for file in glob.iglob(os.path.join(self.storage_path, '*.jpg')):
+                zf.write(filename=file)
