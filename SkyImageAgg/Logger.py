@@ -1,8 +1,7 @@
-import time
 import logging
+import time
 from datetime import datetime
 from logging import Formatter
-from logging import NullHandler
 from logging import StreamHandler
 from logging.handlers import TimedRotatingFileHandler
 
@@ -10,7 +9,6 @@ from i2c_lcd import lcd
 from influxdb import InfluxDBClient
 
 _format = Formatter(fmt='[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s')
-
 
 class DisplayLogHandler(logging.Handler):
     def __init__(self, header=''):
@@ -32,10 +30,9 @@ class InfluxdbLogHandler(logging.Handler):
         super().__init__()
         # connect to influxdb server
         self.client = InfluxDBClient(host=host, port=port, username=username, password=pwd)
-        # check if the database already exists
         self.db = database
         db_list = [i['name'] for i in self.client.get_list_database()]
-
+        # check if the database already exists
         if not self.db in db_list:
             # if not, make a new database
             self.client.create_database(self.db)
@@ -68,6 +65,30 @@ class InfluxdbLogHandler(logging.Handler):
         self.client.write(data=[line], params={'db': self.db}, protocol='line')
 
 
+class SensorLogHandler(InfluxdbLogHandler):
+    def __init__(self, *args, **kwargs):
+        super(SensorLogHandler, self).__init__(*args, **kwargs)
+
+    def emit(self, record):
+        line = '{measurement}{tags} ' \
+               'image="{message}",' \
+               'asctime="{asctime}",' \
+               'name="{name}",' \
+               'irradiance="{irradiance}",' \
+               'ext_temperature="{ext_temperature}",' \
+               'cell_temperature="{cell_temperature}"'.format(
+            measurement=self.measurment,
+            tags=self.tags,
+            asctime=record.asctime,
+            name=record.name,
+            message=record.message,
+            irradiance=record.irr,
+            ext_temperature=record.ext_temp,
+            cell_temperature=record.cell_temp
+        )
+        self.client.write(data=[line], params={'db': self.db}, protocol='line')
+
+
 class Logger(logging.Logger):
     def __init__(self, name, level='DEBUG', format=_format):
         super().__init__(name, level)
@@ -77,7 +98,7 @@ class Logger(logging.Logger):
         handler.setFormatter(self.format)
         self.addHandler(handler)
 
-    def add_remote_handler(self, host, username, pwd, database, measurement, tags=None):
+    def add_influx_handler(self, host, username, pwd, database, measurement, tags=None):
         handler = InfluxdbLogHandler(host, username, pwd, database, measurement)
         if tags:
             handler.add_tags(**tags)
@@ -98,3 +119,8 @@ class Logger(logging.Logger):
         handler.setLevel(20)  # INFO level
         self.add_handler(handler, Formatter(fmt='%(message)s'))
 
+    def add_sensor_handler(self, host, username, pwd, database, measurement, tags=None):
+        handler = SensorLogHandler(host, username, pwd, database, measurement)
+        if tags:
+            handler.add_tags(**tags)
+        self.add_handler(handler, Formatter(fmt='%(asctime)s %(message)s'))
