@@ -221,7 +221,7 @@ class SkyScanner(Controller, ImageProcessor):
         if config.light_sensor:
             # get sensor data (irr, ext_temp, cell_temp)
             try:
-                sensor_data = IrrSensor.get_data()
+                sensor_data = self.IrrSensor.get_data()
                 sensor_logger.info(
                     msg=cap_time,
                     extra={
@@ -268,9 +268,9 @@ class SkyScanner(Controller, ImageProcessor):
             try:
                 self.upload_image(preproc_img, time_stamp=cap_time)
                 logger.info('Uploading {}.jpg was successful!'.format(cap_time))
-                lcd_display.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
+                lcd_logge.info(('{}.jpg'.format(cap_time[-11:]), ' uploaded... '))
             except ConnectionError:
-                lcd_display.warning(('{}.jpg'.format(cap_time[-11:]), '    failed!!!  '))
+                lcd_logge.warning(('{}.jpg'.format(cap_time[-11:]), '    failed!!!  '))
 
                 if not self.upload_stack.full():
                     logger.warning(
@@ -282,7 +282,7 @@ class SkyScanner(Controller, ImageProcessor):
                     logger.info('The upload stack is full! Storing the image...')
                     self.save_as_pic(preproc_img, img_path)  # write array on the disk as jpg
                     logger.info('{}.jpg was stored in temp storage!'.format(cap_time))
-                    lcd_display.info(('{}.jpg'.format(cap_time[-11:]), '    stored...   '))
+                    lcd_logge.info(('{}.jpg'.format(cap_time[-11:]), '    stored...   '))
 
     def execute_and_store(self):
         """
@@ -298,10 +298,10 @@ class SkyScanner(Controller, ImageProcessor):
             try:
                 self.save_as_pic(preproc_img, img_path)
                 logger.info('{}.jpg was stored!'.format(cap_time))
-                lcd_display.info(('{}.jpg'.format(cap_time[-11:]), '    stored...   '))
+                lcd_logge.info(('{}.jpg'.format(cap_time[-11:]), '    stored...   '))
             except Exception:
                 logger.critical('Couldn\'t write {}.jpg on disk!'.format(cap_time), exc_info=1)
-                lcd_display.warning(('{}.jpg'.format(cap_time[-11:]), '     failed!!!  '))
+                lcd_logge.warning(('{}.jpg'.format(cap_time[-11:]), '     failed!!!  '))
 
     def send_thumbnail(self):
         """
