@@ -6,6 +6,7 @@ import shutil
 from os.path import dirname
 from os.path import join
 from queue import LifoQueue
+import logging
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
@@ -88,7 +89,10 @@ class SkyScanner(Controller, ImageProcessor):
 
     if config.lcd_display:
         lcd = Logger(name='LCD')
-        lcd.add_display_handler(header='___SkyScanner___')
+        lcd.add_display_handler('   SkyScanner   ')
+    else:
+        lcd = logging.getLogger(name='LCD')
+        lcd.addHandler(logging.NullHandler())
 
     def __init__(self):
         """
@@ -424,7 +428,7 @@ class SkyScanner(Controller, ImageProcessor):
         self.logger.info('Thumbnail uploader job started: Recurring every {} minutes.'.format(
             self.config.thumbnailing_time_gap
         ))
-        self.sched.add_job(self.execute_and_store, 'cron', minute='*/{}'.format(self.config.thumbnailing_time_gap))
+        self.sched.add_job(self.send_thumbnail, 'cron', minute='*/{}'.format(self.config.thumbnailing_time_gap))
 
         self.sched.start()
 
