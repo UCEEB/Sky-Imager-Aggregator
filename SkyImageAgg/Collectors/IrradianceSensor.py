@@ -9,8 +9,8 @@ class IrrSensor(minimalmodbus.Instrument):
 
     """
 
-    def __init__(self, serial_port, slave_address, baudrate, bytesize, parity, stopbits):
-        super().__init__(port=serial_port, slaveaddress=slave_address)
+    def __init__(self, port, address, baudrate, bytesize, parity, stopbits):
+        super().__init__(port=port, slaveaddress=address)
         self.serial.baudrate = baudrate
         self.serial.bytesize = bytesize
         self.serial.parity = parity
