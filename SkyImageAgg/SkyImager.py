@@ -171,7 +171,7 @@ class SkyScanner(Controller, ImageProcessor):
             self.messenger = None
             self.gprs = None
 
-        self.upload_stack = LifoQueue(maxsize=20)
+        self.upload_stack = LifoQueue(maxsize=5)
         self.day_of_year = dt.datetime.utcnow().timetuple().tm_yday
         self.sunrise, self.sunset = self.get_twilight_times_by_day(day_of_year=self.day_of_year)
         self.daytime = False
