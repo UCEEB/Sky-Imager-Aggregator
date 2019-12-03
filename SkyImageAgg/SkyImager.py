@@ -219,6 +219,22 @@ class SkyScanner(Controller, ImageProcessor):
         cap_time = dt.datetime.utcnow().strftime(config.time_format)
         # set the path to save the image
         output_path = os.path.join(self.temp_storage_path, cap_time)
+
+        if config.light_sensor:
+            # get sensor data (irr, ext_temp, cell_temp)
+            try:
+                sensor_data = IrrSensor.get_data()
+                sensor_logger.info(
+                    msg=cap_time,
+                    extra={
+                        'irr' : sensor_data[0],  # irradiance (W/m^2)
+                        'ext_temp' : sensor_data[1], # external temperature (°C)
+                        'ext_temp': sensor_data[2]  # cell temperature (°C)
+                    }
+                )
+            except Exception:
+                logger.error('Couldn\'t collect data from irradiance sensor', exc_info=1)
+
         return cap_time, output_path, self.cam.cap_pic()
 
     def preprocess(self, image_arr):
@@ -247,7 +263,7 @@ class SkyScanner(Controller, ImageProcessor):
         """
         if self.daytime or config.night_mode:
             # capture the image and set the proper name and path for it
-            cap_time, img_path, img_arr, sensor_data = self.scan()
+            cap_time, img_path, img_arr = self.scan()
             # preprocess the image
             preproc_img = self.preprocess(img_arr)
             # try to upload the image to the server, if failed, save it to storage
