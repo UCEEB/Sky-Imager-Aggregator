@@ -69,10 +69,8 @@ class InfluxdbLogHandler(logging.Handler):
 
 
 class Logger(logging.Logger):
-    def __init__(self, name, level='DEBUG', format=_format, null=False):
+    def __init__(self, name, level='DEBUG', format=_format):
         super().__init__(name, level)
-        if null:
-            self.addHandler(NullHandler)
         self.format = format
 
     def add_handler(self, handler, format):
