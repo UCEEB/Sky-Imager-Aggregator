@@ -80,8 +80,6 @@ if config.light_sensor:
             'host': os.uname()[1]
         }
     )
-
-if config.log_path:
     log_file_path = join(config.log_path, sensor_logger.name)
     sensor_logger.add_timed_rotating_file_handler(log_file=log_file_path)
 
