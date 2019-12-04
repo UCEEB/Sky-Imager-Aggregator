@@ -34,13 +34,11 @@ class IrrSensor(minimalmodbus.Instrument):
 
         """
         self.open_serial()
-        try:
-            irr = self.read_register(0, 1, 4, False)
-            ext_temp = self.read_register(8, 1, 4, True)
-            cell_temp = self.read_register(7, 1, 4, True)
-        except Exception as e:
-            self.serial.close()
-            raise Exception(e)
+
+        irr = self.read_register(0, 1, 4, False)
+        ext_temp = self.read_register(8, 1, 4, True)
+        cell_temp = self.read_register(7, 1, 4, True)
+
         self.serial.close()
         return irr, ext_temp, cell_temp
 
