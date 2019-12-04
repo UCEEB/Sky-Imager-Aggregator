@@ -8,7 +8,7 @@ from logging.handlers import TimedRotatingFileHandler
 from i2c_lcd import lcd
 from influxdb import InfluxDBClient
 
-_format = Formatter(fmt='[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s')
+_log_format = Formatter('[%(asctime)s] %(levelname)s %(threadName)s %(name)s %(message)s')
 
 class DisplayLogHandler(logging.Handler):
     def __init__(self, header=''):
@@ -24,6 +24,7 @@ class DisplayLogHandler(logging.Handler):
         self.lcd.lcd_clear()
         self.lcd.lcd_display_string(self.header, line=1)
         self.lcd.lcd_display_string('   Waiting...   ', line=2)
+
 
 class InfluxdbLogHandler(logging.Handler):
     def __init__(self, host, username, pwd, database, measurement, port=8086):
@@ -67,60 +68,72 @@ class InfluxdbLogHandler(logging.Handler):
 
 class SensorLogHandler(InfluxdbLogHandler):
     def __init__(self, *args, **kwargs):
-        super(SensorLogHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def emit(self, record):
         line = '{measurement}{tags} ' \
-               'image="{message}",' \
                'asctime="{asctime}",' \
                'name="{name}",' \
-               'irradiance="{irradiance}",' \
-               'ext_temperature="{ext_temperature}",' \
-               'cell_temperature="{cell_temperature}"'.format(
+               'timestamp="{timestamp}",' \
+               'irradiance={irradiance},' \
+               'ext_temperature={ext_temperature},' \
+               'cell_temperature={cell_temperature}'.format(
             measurement=self.measurment,
             tags=self.tags,
             asctime=record.asctime,
             name=record.name,
-            message=record.message,
-            irradiance=record.irr,
-            ext_temperature=record.ext_temp,
-            cell_temperature=record.cell_temp
+            timestamp=record.msg['timestamp'],
+            irradiance=record.msg['irradiance'],        # irradiance - float (W/m^2)
+            ext_temperature=record.msg['ext_temp'],     # external - float temperature (°C)
+            cell_temperature=record.msg['cell_temp']    # cell temperature - float (°C)
         )
         self.client.write(data=[line], params={'db': self.db}, protocol='line')
 
-
 class Logger(logging.Logger):
-    def __init__(self, name, level='DEBUG', format=_format):
+    def __init__(self, name, level='DEBUG', format=_log_format):
         super().__init__(name, level)
         self.format = format
 
-    def add_handler(self, handler, format):
-        handler.setFormatter(self.format)
+    def add_handler(self, handler, format=None):
+        if format:
+            handler.setFormatter(format)
+        else:
+            handler.setFormatter(self.format)
         self.addHandler(handler)
 
-    def add_influx_handler(self, host, username, pwd, database, measurement, tags=None):
+    def add_influx_handler(self, host, username, pwd, database, measurement, tags=None, format=None):
         handler = InfluxdbLogHandler(host, username, pwd, database, measurement)
         if tags:
             handler.add_tags(**tags)
-        self.add_handler(handler, self.format)
+        self.add_handler(handler, format=format)
 
-    def add_stream_handler(self):
+    def add_stream_handler(self, format=None):
         handler = StreamHandler()
         handler.setLevel(10)  # debug level
-        self.add_handler(handler, self.format)
+        self.add_handler(handler, format=format)
 
-    def add_timed_rotating_file_handler(self, log_file):
+    def add_timed_rotating_file_handler(self, log_file, format=None):
         log_file = '{}-{}.log'.format(log_file, datetime.utcnow().strftime('%Y-%m-%d'))
         handler = TimedRotatingFileHandler(log_file, when='MIDNIGHT', backupCount=20)
-        self.add_handler(handler, self.format)
+        self.add_handler(handler, format=format)
 
-    def add_display_handler(self, header):
+    def add_display_handler(self, header, format=Formatter('%(message)s')):
         handler = DisplayLogHandler(header=header)
         handler.setLevel(20)  # INFO level
-        self.add_handler(handler, Formatter(fmt='%(message)s'))
+        self.add_handler(handler, format=format)
 
-    def add_sensor_handler(self, host, username, pwd, database, measurement, tags=None):
+    def add_sensor_handler(
+            self,
+            host,
+            username,
+            pwd,
+            database,
+            measurement,
+            format=Formatter('[%(asctime)s] %(name)s %(message)s'),
+            tags=None
+    ):
         handler = SensorLogHandler(host, username, pwd, database, measurement)
+        handler.setLevel(20)  # INFO level
         if tags:
             handler.add_tags(**tags)
-        self.add_handler(handler, Formatter(fmt='%(asctime)s %(message)s'))
+        self.add_handler(handler, format=format)
