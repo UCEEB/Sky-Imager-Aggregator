@@ -25,7 +25,7 @@ from SkyImageAgg.Preprocessor import ImageProcessor
 
 _base_dir = dirname(dirname(__file__))
 
-# executors for job schedulers indicating the number of threads availeble for each pool
+# executors for job schedulers
 executors = {
     'default': ThreadPoolExecutor(30),   # max threads: 30
 }
@@ -49,7 +49,7 @@ if config.INFLX_mode:
         pwd=config.INFLX_pwd,
         host=config.INFLX_host,
         database=config.INFLX_db,
-        measurement=config.INFLX_measurement,
+        measurement='app_log',
         tags={
             'latitude': config.camera_latitude,
             'longitude': config.camera_longitude,
@@ -68,21 +68,20 @@ else:
 # Logger object to collect irradiance sensor data and send the to an influxDB server
 if config.light_sensor:
     sensor_logger = Logger(name='IrrSensor')
+    log_file_path = join(config.log_path, sensor_logger.name)
+    sensor_logger.add_timed_rotating_file_handler(log_file=log_file_path)
     sensor_logger.add_sensor_handler(
         username=config.INFLX_user,
         pwd=config.INFLX_pwd,
         host=config.INFLX_host,
         database=config.INFLX_db,
-        measurement=config.INFLX_measurement,
+        measurement='sensor_log',
         tags={
             'latitude': config.camera_latitude,
             'longitude': config.camera_longitude,
             'host': os.uname()[1]
         }
     )
-    log_file_path = join(config.log_path, sensor_logger.name)
-    sensor_logger.add_timed_rotating_file_handler(log_file=log_file_path)
-
 else:
     sensor_logger = logging.getLogger(name='IrrSensor')
     sensor_logger.addHandler(logging.NullHandler())
@@ -223,11 +222,11 @@ class SkyScanner(Controller, ImageProcessor):
             try:
                 sensor_data = self.irr_sensor.get_data()
                 sensor_logger.info(
-                    msg=cap_time,
-                    extra={
-                        'irr' : sensor_data[0],  # irradiance (W/m^2)
-                        'ext_temp' : sensor_data[1], # external temperature (°C)
-                        'ext_temp': sensor_data[2]  # cell temperature (°C)
+                    {
+                        'timestamp': cap_time,
+                        'irradiance': sensor_data[0],  # irradiance (W/m^2)
+                        'ext_temp': sensor_data[1],  # external temperature (°C)
+                        'cell_temp': sensor_data[2]  # cell temperature (°C)
                     }
                 )
             except Exception:
