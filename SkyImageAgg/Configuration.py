@@ -49,7 +49,6 @@ class Configuration:
         self.GSM_ppp_config_file = self.conf.get('GSM', 'ppp_config_file')
 
         self.MODBUS_port = self.conf.get('MODBUS', 'port')
-        self.MODBUS_log_temperature = self.conf.getboolean('MODBUS', 'log_temperature')
         self.MODBUS_sensor_address = self.conf.getint('MODBUS', 'sensor_address')
         self.MODBUS_baudrate = self.conf.getint('MODBUS', 'baudrate')
         self.MODBUS_bytesize = self.conf.getint('MODBUS', 'bytesize')
