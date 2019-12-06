@@ -1,9 +1,9 @@
 #!/usr/bin/python3
-import sys
-import os
-import time
 import atexit
+import os
 import signal
+import sys
+import time
 
 from SkyImageAgg.SkyImager import SkyScanner
 
@@ -143,6 +143,9 @@ if __name__ == '__main__':
             daemon.stop()
         elif 'restart' == sys.argv[1]:
             daemon.restart()
+        elif 'test' == sys.argv[1]:  # run as a non-daemon app
+            s = SkyScanner()
+            s.main()
         else:
             print('Unknown command')
             sys.exit(2)
