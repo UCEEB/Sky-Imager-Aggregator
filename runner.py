@@ -143,9 +143,15 @@ if __name__ == '__main__':
             daemon.stop()
         elif 'restart' == sys.argv[1]:
             daemon.restart()
-        elif 'test' == sys.argv[1]:  # run as a non-daemon app
+        elif 'foreground' == sys.argv[1]:  # run as a non-daemon app
             s = SkyScanner()
             s.main()
+	elif 'persist' == sys.argv[1]:
+            count = 0
+	    while count < 10:
+                daemon.start()
+		count += 1
+                time.sleep(15)
         else:
             print('Unknown command')
             sys.exit(2)
