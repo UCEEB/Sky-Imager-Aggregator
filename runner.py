@@ -9,9 +9,11 @@ from SkyImageAgg.SkyImager import SkyScanner
 
 
 class Daemon:
-    """A generic daemon class by Sander Marechal.
+    """
+    A generic daemon class written by Sander Marechal.
 
-    Usage: subclass the daemon class and override the run() method."""
+    Usage: subclass the daemon class and override the run() method.
+    """
 
     def __init__(self, pidfile):
         self.pidfile = pidfile
@@ -143,9 +145,15 @@ if __name__ == '__main__':
             daemon.stop()
         elif 'restart' == sys.argv[1]:
             daemon.restart()
-        elif 'test' == sys.argv[1]:  # run as a non-daemon app
+        elif 'foreground' == sys.argv[1]:  # run as a non-daemon app (ad hoc)
             s = SkyScanner()
             s.main()
+        elif 'persist' == sys.argv[1]:
+            count = 0
+            while count < 10:
+                count += 1
+                daemon.start()
+                time.sleep(15)
         else:
             print('Unknown command')
             sys.exit(2)
