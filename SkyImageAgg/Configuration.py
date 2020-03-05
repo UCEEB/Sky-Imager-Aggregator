@@ -1,64 +1,76 @@
 import configparser
 
+conf = configparser.ConfigParser()
+conf.read('../config.ini')
 
-class Configuration:
+
+class Config:
     """
-
+    Holds the necessary configuration variables from config.ini file.
     """
+    # authentication settings
+    client_id = conf.get('Auth', 'client_id')
+    key = conf.get('Auth', 'sha256_key')
+    server = conf.get('Auth', 'upload_server')
 
-    def __init__(self, config_file):
-        self.conf = configparser.ConfigParser()
-        self.conf.read(config_file)
-        self.cam_address = self.conf.get('SETTING', 'cam_address')
-        self.cam_username = self.conf.get('SETTING', 'cam_username')
-        self.cam_pwd = self.conf.get('SETTING', 'cam_password')
-        self.storage_path = self.conf.get('SETTING', 'storage_path')
-        self.temp_storage_path = self.conf.get('SETTING', 'temp_storage_path')
-        self.server = self.conf.get('SETTING', 'upload_server')
-        self.log_path = self.conf.get('SETTING', 'log_path')
-        self.lcd_display = self.conf.getboolean('SETTING', 'lcd_display')
-        self.log_to_console = self.conf.getboolean('SETTING', 'log_to_console')
-        self.integrated_cam = self.conf.getboolean('SETTING', 'integrated_cam')
-        self.camera_latitude = self.conf.getfloat('SETTING', 'camera_latitude')
-        self.camera_longitude = self.conf.getfloat('SETTING', 'camera_longitude')
-        self.camera_altitude = self.conf.getfloat('SETTING', 'camera_altitude')
-        self.time_format = self.conf.get('SETTING', 'filetime_format')
-        self.night_mode = self.conf.getboolean('SETTING', 'night_mode')
-        self.jpeg_quality = self.conf.getint('SETTING', 'jpeg_quality')
-        self.output_image_size = [
-            int(i.strip()) for i in self.conf.get('SETTING', 'output_image_size').split(',')
-        ]
-        self.mask_path = self.conf.get('SETTING', 'mask_path')
-        self.cap_mod = self.conf.getint('SETTING', 'cap_mod')
-        self.client_id = self.conf.get('SETTING', 'client_id')
-        self.key = self.conf.get('SETTING', 'sha256_key')
-        self.ntp_server = self.conf.get('SETTING', 'ntp_server')
-        self.autonomous_mode = self.conf.getboolean('SETTING', 'autonomous_mode')
-        self.light_sensor = self.conf.getboolean('SETTING', 'light_sensor')
+    # camera settings
+    cam_address = conf.get('Camera', 'cam_address')
+    cam_username = conf.get('Camera', 'cam_username')
+    cam_pwd = conf.get('Camera', 'cam_password')
+    RPi_cam = conf.getboolean('Camera', 'RPi_cam_enabled')
 
-        self.GSM_module = self.conf.getboolean('GSM', 'mode')
-        self.GSM_port = self.conf.get('GSM', 'port')
-        self.GSM_phone_no = self.conf.get('GSM', 'phone_no')
-        self.GSM_send_thumbnail = self.conf.getboolean('GSM', 'send_thumbnail')
-        self.GSM_thumbnail_size = self.conf.getint('GSM', 'thumbnail_size')
-        self.GSM_thumbnail_upload_server = self.conf.get('GSM', 'thumbnail_upload_server')
-        self.thumbnailing_time_gap = self.conf.getint('GSM', 'thumbnail_upload_time_interval')
-        self.GSM_time_sync = self.conf.getboolean('GSM', 'time_sync')
-        self.GSM_send_log = self.conf.getboolean('GSM', 'send_log')
-        self.GSM_log_upload_server = self.conf.get('GSM', 'log_upload_server')
-        self.GSM_ppp_config_file = self.conf.get('GSM', 'ppp_config_file')
+    # Logging settings
+    log_path = conf.get('Logging', 'log_path')
+    lcd_display = conf.getboolean('Logging', 'lcd_display')
+    log_to_console = conf.getboolean('Logging', 'log_to_console')
 
-        self.MODBUS_port = self.conf.get('MODBUS', 'port')
-        self.MODBUS_sensor_address = self.conf.getint('MODBUS', 'sensor_address')
-        self.MODBUS_baudrate = self.conf.getint('MODBUS', 'baudrate')
-        self.MODBUS_bytesize = self.conf.getint('MODBUS', 'bytesize')
-        self.MODBUS_parity = self.conf.get('MODBUS', 'parity')
-        self.MODBUS_stopbits = self.conf.getint('MODBUS', 'stopbits')
+    # Storage settings
+    storage_path = conf.get('Storage', 'storage_path')
+    store_locally = conf.getboolean('Storage', 'local_storage')
+    time_format = conf.get('Storage', 'filetime_format')
 
-        self.INFLX_mode = self.conf.getboolean('INFLUXDB', 'mode')
-        self.INFLX_host = self.conf.get('INFLUXDB', 'host')
-        self.INFLX_port = self.conf.getint('INFLUXDB', 'port')
-        self.INFLX_user = self.conf.get('INFLUXDB', 'user')
-        self.INFLX_pwd = self.conf.get('INFLUXDB', 'password')
-        self.INFLX_db = self.conf.get('INFLUXDB', 'database')
-        self.INFLX_measurement = self.conf.get('INFLUXDB', 'measurement')
+    # Location settings
+    camera_latitude = conf.getfloat('Location', 'camera_latitude')
+    camera_longitude = conf.getfloat('Location', 'camera_longitude')
+    camera_altitude = conf.getfloat('Location', 'camera_altitude')
+
+    # Time settings
+    night_mode = conf.getboolean('Time', 'night_mode')
+    ntp_server = conf.get('Time', 'ntp_server')
+    cap_interval = conf.getint('Time', 'cap_interval')
+    daytime_offset = conf.getint('Time', 'daytime_offset')
+
+    # Image settings
+    jpeg_quality = conf.getint('Image', 'jpeg_quality')
+    image_size = [int(i.strip()) for i in conf.get('Image', 'image_size').split(',')]
+    mask_path = conf.get('Image', 'mask_image')
+
+    # Dashboard settings (InfluxDB connected to Grafana)
+    dashboard_enabled = conf.getboolean('Dashboard', 'enabled')
+    influxdb_host = conf.get('Dashboard', 'host')
+    influxdb_port = conf.getint('Dashboard', 'port')
+    influxdb_user = conf.get('Dashboard', 'user')
+    influxdb_pwd = conf.get('Dashboard', 'password')
+    influxdb_database = conf.get('Dashboard', 'database')
+    influxdb_measurement = conf.get('Dashboard', 'measurement')
+
+    # Irradiance sensor settings
+    irr_sensor_enabled = conf.getboolean('Irradiance_sensor', 'enabled')
+    irr_sensor_port = conf.get('Irradiance_sensor', 'port')
+    irr_sensor_address = conf.getint('Irradiance_sensor', 'sensor_address')
+    irr_sensor_baudrate = conf.getint('Irradiance_sensor', 'baudrate')
+    irr_sensor_bytesize = conf.getint('Irradiance_sensor', 'bytesize')
+    irr_sensor_parity = conf.get('Irradiance_sensor', 'parity')
+    irr_sensor_stopbits = conf.getint('Irradiance_sensor', 'stopbits')
+
+    # GSM settings
+    gsm_enabled = conf.getboolean('GSM', 'enabled')
+    gsm_port = conf.get('GSM', 'port')
+    gsm_phone_no = conf.get('GSM', 'phone_no')
+    gsm_ppp_config_file = conf.get('GSM', 'ppp_config_file')
+
+    # Thumbnail settings
+    thumbnail_enabled = conf.getboolean('Thumbnail', 'enabled')
+    thumbnail_size = conf.getint('Thumbnail', 'thumbnail_size')
+    thumbnail_upload_server = conf.get('Thumbnail', 'thumbnail_upload_server')
+    thumbnail_interval = conf.getint('Thumbnail', 'thumbnail_interval')
