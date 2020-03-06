@@ -15,7 +15,7 @@ from SkyImageAgg import Utils
 from SkyImageAgg.Collectors.GeoVisionCam import GeoVisionCam as IPCamera
 from SkyImageAgg.Collectors.IrradianceSensor import IrrSensor
 from SkyImageAgg.Collectors.RpiCam import RpiCam
-from SkyImageAgg.Configuration import Configuration
+from SkyImageAgg.Configuration import Config
 from SkyImageAgg.Controller import Controller
 from SkyImageAgg.GSM import GPRS
 from SkyImageAgg.GSM import has_internet
@@ -24,41 +24,40 @@ from SkyImageAgg.Logger import Logger
 from SkyImageAgg.Preprocessor import ImageProcessor
 
 _base_dir = dirname(dirname(__file__))
+_tmp_dir = join(_base_dir, 'temp')
+
+if not os.path.exists(_tmp_dir):
+    os.mkdir(_tmp_dir)
 
 # executors for job schedulers
-executors = {
-    'default': ThreadPoolExecutor(30),   # max threads: 30
-}
-
-# Configuration settings
-config = Configuration(config_file=join(_base_dir, 'config.ini'))
+executors = {'default': ThreadPoolExecutor(30)}  # max threads: 30
 
 # Application logger
 logger = Logger(name='SkyScanner')
 
-if config.log_to_console:
+if Config.log_to_console:
     logger.add_stream_handler()
 
-if config.log_path:
-    log_file_path = join(config.log_path, logger.name)
+if Config.log_path:
+    log_file_path = join(Config.log_path, logger.name)
     logger.add_timed_rotating_file_handler(log_file=log_file_path)
 
-if config.INFLX_mode:
+if Config.dashboard_enabled:
     logger.add_influx_handler(
-        username=config.INFLX_user,
-        pwd=config.INFLX_pwd,
-        host=config.INFLX_host,
-        database=config.INFLX_db,
+        username=Config.influxdb_user,
+        pwd=Config.influxdb_pwd,
+        host=Config.influxdb_host,
+        database=Config.influxdb_database,
         measurement='app_log',
         tags={
-            'latitude': config.camera_latitude,
-            'longitude': config.camera_longitude,
+            'latitude': Config.camera_latitude,
+            'longitude': Config.camera_longitude,
             'host': os.uname()[1]
         }
     )
 
 # Logger object for streaming the specific short logs to the RPi LCD display (2x16)
-if config.lcd_display:
+if Config.lcd_display:
     lcd_logger = Logger(name='LCD')
     lcd_logger.add_display_handler('   SkyScanner   ')
 else:
@@ -66,25 +65,26 @@ else:
     lcd_logger.addHandler(logging.NullHandler())
 
 # Logger object to collect irradiance sensor data and send the to an influxDB server
-if config.light_sensor:
+if Config.irr_sensor_enabled:
     sensor_logger = Logger(name='IrrSensor')
-    log_file_path = join(config.log_path, sensor_logger.name)
+    log_file_path = join(Config.log_path, sensor_logger.name)
     sensor_logger.add_timed_rotating_file_handler(log_file=log_file_path)
     sensor_logger.add_sensor_handler(
-        username=config.INFLX_user,
-        pwd=config.INFLX_pwd,
-        host=config.INFLX_host,
-        database=config.INFLX_db,
+        username=Config.influxdb_user,
+        pwd=Config.influxdb_pwd,
+        host=Config.influxdb_host,
+        database=Config.influxdb_database,
         measurement='sensor_log',
         tags={
-            'latitude': config.camera_latitude,
-            'longitude': config.camera_longitude,
+            'latitude': Config.camera_latitude,
+            'longitude': Config.camera_longitude,
             'host': os.uname()[1]
         }
     )
 else:
     sensor_logger = logging.getLogger(name='IrrSensor')
     sensor_logger.addHandler(logging.NullHandler())
+
 
 def sync_time(ntp_server):
     """
@@ -109,7 +109,7 @@ class SkyScanner(Controller, ImageProcessor):
     Captures pictures from sky and stores them locally or uploads them to a remote server.
 
     SkyScanner  coordinates different  other classes such as Controller  and  ImageProcessor by  inheriting  their
-    properties. This class calls the Configuration class to initialize an instance using Configuration attributes.
+    properties. This class calls the Config class to initialize an instance using Config attributes.
     Next, It collects data by means of the modules in the Collectors package including RpiCam and  other available
     cameras and sensors.  Using  ImageProcessor, it preprocesses  the image data  collected by camera  and  stores
     them locally or uploads it to the server. The class can be run in  two modes, online  and offline. The  online
@@ -118,10 +118,6 @@ class SkyScanner(Controller, ImageProcessor):
 
     Attributes
     ----------
-    config : `Configuration`
-        an instance of `Configuration` class for calling the configuration variables from config.ini.
-    logger : `logging`
-        an instance of `logging` to log the events throughout the class.
     cam : `IPCamera` or `RpiCam`
         an instance of `Collectors.Cam` for capturing images.
     irr_sensor : `IrrSensor`
@@ -141,58 +137,58 @@ class SkyScanner(Controller, ImageProcessor):
     daytime : `boolean`
         True if daytime, false otherwise.
     """
+
     def __init__(self):
         """
         Initializes a SkyScanner instance.
         """
         super().__init__(
-            server=config.server,
-            client_id=config.client_id,
-            latitude=config.camera_latitude,
-            longitude=config.camera_longitude,
-            altitude=config.camera_altitude,
-            auth_key=config.key,
-            storage_path=config.storage_path,
-            temp_storage_path=config.temp_storage_path,
-            time_format=config.time_format,
+            server=Config.server,
+            client_id=Config.client_id,
+            latitude=Config.camera_latitude,
+            longitude=Config.camera_longitude,
+            altitude=Config.camera_altitude,
+            auth_key=Config.key,
+            storage_path=Config.storage_path,
+            time_format=Config.time_format,
             logger=None,
-            twilight_coll_in_memory=False,
-            twilight_coll_file=join(_base_dir, 'twilight_times.pkl')
+            in_memory=False,
+            file=join(_base_dir, 'twilight_times.pkl')
         )
 
-        sync_time(config.ntp_server)
+        sync_time(Config.ntp_server)
 
         if self.has_location_changed():
             # if device location changed or twilight times have not been collected
             logger.info('Collecting twilight times within a year...')
             self.collect_annual_twilight_times()
 
-        if config.integrated_cam:
+        if Config.RPi_cam:
             self.cam = RpiCam()
         else:
-            self.cam = IPCamera(config.cam_address)
-            self.cam.login(config.cam_username, config.cam_pwd)
+            self.cam = IPCamera(Config.cam_address)
+            self.cam.login(Config.cam_username, Config.cam_pwd)
 
-        if config.light_sensor:
+        if Config.irr_sensor_enabled:
             self.irr_sensor = IrrSensor(
-                port=config.MODBUS_port,
-                address=config.MODBUS_sensor_address,
-                baudrate=config.MODBUS_baudrate,
-                bytesize=config.MODBUS_bytesize,
-                parity=config.MODBUS_parity,
-                stopbits=config.MODBUS_stopbits
+                port=Config.irr_sensor_port,
+                address=Config.irr_sensor_address,
+                baudrate=Config.irr_sensor_baudrate,
+                bytesize=Config.irr_sensor_bytesize,
+                parity=Config.irr_sensor_parity,
+                stopbits=Config.irr_sensor_stopbits
             )
 
         self.set_image_processor(
             raw_input_arr=self.cam.cap_pic(output='array'),  # cap first pic for testing and setup
-            mask_path=config.mask_path,
-            output_size=config.output_image_size,
-            jpeg_quality=config.jpeg_quality
+            mask_path=Config.mask_path,
+            output_size=Config.image_size,
+            jpeg_quality=Config.jpeg_quality
         )
 
-        if config.GSM_module:
+        if Config.gsm_enabled:
             self.messenger = Messenger(logger=logger)
-            self.gprs = GPRS(ppp_config_file=config.GSM_ppp_config_file, logger=logger)
+            self.gprs = GPRS(ppp_config_file=Config.gsm_ppp_config_file, logger=logger)
         else:
             self.messenger = None
             self.gprs = None
@@ -213,11 +209,11 @@ class SkyScanner(Controller, ImageProcessor):
             a tuple of name (timestamp), path and the corresponding image array.
         """
         # store the current time according to the time format
-        cap_time = dt.datetime.utcnow().strftime(config.time_format)
+        cap_time = dt.datetime.utcnow().strftime(Config.time_format)
         # set the path to save the image
-        output_path = os.path.join(self.temp_storage_path, cap_time)
+        output_path = os.path.join(_tmp_dir, cap_time)
 
-        if config.light_sensor:
+        if Config.irr_sensor_enabled:
             # get sensor data (irr, ext_temp, cell_temp)
             try:
                 sensor_data = self.irr_sensor.get_data()
@@ -258,7 +254,7 @@ class SkyScanner(Controller, ImageProcessor):
         Takes a picture from sky, pre-processes it and tries to upload it to the server. if failed, it puts
         the image array and its metadata in `upload_stack`.
         """
-        if self.daytime or config.night_mode:
+        if self.daytime or Config.night_mode:
             # capture the image and set the proper name and path for it
             cap_time, img_path, img_arr = self.scan()
             # preprocess the image
@@ -288,7 +284,7 @@ class SkyScanner(Controller, ImageProcessor):
         Recurrently takes a picture from sky, pre-processes it and stores it in `storage_path` directory
         during the daytime.
         """
-        if self.daytime or config.night_mode:
+        if self.daytime or Config.night_mode:
             # capture the image and set the proper name and path for it
             cap_time, img_path, img_arr = self.scan()
             # preprocess the image
@@ -307,7 +303,7 @@ class SkyScanner(Controller, ImageProcessor):
         Recurrently takes a picture from sky, pre-processes it and makes a thumbnail out of the image array.
         Then it tries to upload it during the daytime every hour.
         """
-        if self.daytime or config.night_mode:
+        if self.daytime or Config.night_mode:
             # capture the image and set the proper name and path for it
             cap_time, img_path, img_arr = self.scan()
             # preprocess the image
@@ -359,8 +355,8 @@ class SkyScanner(Controller, ImageProcessor):
         Checks the `storage_path` every 10 seconds to try uploading the stored images. If it failed, waits
         another 30 seconds.
         """
-        if not len(os.listdir(self.temp_storage_path)) == 0:
-            for img in glob.iglob(os.path.join(self.temp_storage_path, '*.jpg')):
+        if not len(os.listdir(_tmp_dir)) == 0:
+            for img in glob.iglob(os.path.join(_tmp_dir, '*.jpg')):
                 timestamp = os.path.split(img)[-1].split('.')[0]
                 try:
                     self.retry_uploading_image(image=img, time_stamp=timestamp)  # try to re-upload
@@ -393,10 +389,10 @@ class SkyScanner(Controller, ImageProcessor):
         """
         if not self.daytime:
             logger.debug('It\'s daytime!')
-            sync_time(config.ntp_server)
+            sync_time(Config.ntp_server)
             self.daytime = True
 
-            if config.GSM_module:
+            if Config.gsm_enabled:
                 if not self.messenger.is_power_on():
                     self.messenger.turn_on_modem()
 
@@ -404,7 +400,7 @@ class SkyScanner(Controller, ImageProcessor):
                            'SkyScanner just started.\n' \
                            'Available space: {} GB'.format(self.get_available_free_space())
 
-                self.messenger.send_sms(config.GSM_phone_no, sms_text)
+                self.messenger.send_sms(Config.gsm_phone_no, sms_text)
 
     def do_sunset_operations(self):
         """
@@ -413,14 +409,14 @@ class SkyScanner(Controller, ImageProcessor):
         """
         if self.daytime:
             logger.debug('Daytime is over!')
-            sync_time(config.ntp_server)
+            sync_time(Config.ntp_server)
             self.daytime = False
             self.check_main_storage()
 
-            if config.autonomous_mode:
+            if Config.store_locally:
                 self.compress_storage()
 
-            if config.GSM_module:
+            if Config.gsm_enabled:
                 if not self.messenger.is_power_on():
                     self.messenger.turn_on_modem()
 
@@ -428,9 +424,9 @@ class SkyScanner(Controller, ImageProcessor):
                            'SkyScanner is done for today.\n' \
                            'Available space: {} GB'.format(self.get_available_free_space())
 
-                self.messenger.send_sms(config.GSM_phone_no, sms_text)
+                self.messenger.send_sms(Config.gsm_phone_no, sms_text)
 
-        elif config.night_mode:
+        elif Config.night_mode:
             logger.debug('Device is set on night mode: Scanning night sky...')
 
         else:
@@ -464,13 +460,13 @@ class SkyScanner(Controller, ImageProcessor):
         logger.info('Time watcher job started: Recurring every 30 seconds.')
         self.sched.add_job(self.watch_time, 'cron', second='*/30')
 
-        logger.info('Writer job started: Recurring every {} seconds'.format(config.cap_mod))
-        self.sched.add_job(self.execute_and_store, 'cron', second='*/{}'.format(config.cap_mod))
+        logger.info('Writer job started: Recurring every {} seconds'.format(Config.cap_interval))
+        self.sched.add_job(self.execute_and_store, 'cron', second='*/{}'.format(Config.cap_interval))
 
         logger.info('Thumbnail uploader job started: Recurring every {} minutes.'.format(
-            config.thumbnailing_time_gap
+            Config.thumbnail_interval
         ))
-        self.sched.add_job(self.send_thumbnail, 'cron', minute='*/{}'.format(config.thumbnailing_time_gap))
+        self.sched.add_job(self.send_thumbnail, 'cron', minute='*/{}'.format(Config.thumbnail_interval))
 
         self.sched.start()
 
@@ -482,8 +478,8 @@ class SkyScanner(Controller, ImageProcessor):
         logger.info('Time watcher job started: Recurring every 30 seconds.')
         self.sched.add_job(self.watch_time, 'cron', second='*/30')
 
-        logger.info('Uploader job started: Recurring every {} seconds.'.format(config.cap_mod))
-        self.sched.add_job(self.execute_and_upload, 'cron', second='*/{}'.format(config.cap_mod))
+        logger.info('Uploader job started: Recurring every {} seconds.'.format(Config.cap_interval))
+        self.sched.add_job(self.execute_and_upload, 'cron', second='*/{}'.format(Config.cap_interval))
 
         logger.info('Retriever job started: Recurring every 15 seconds.')
         self.sched.add_job(self.check_upload_stack, 'cron', second='*/15')
@@ -497,7 +493,7 @@ class SkyScanner(Controller, ImageProcessor):
         """
         Runs the device in offline mode if autonomous mode is True, otherwise in online mode.
         """
-        if config.autonomous_mode:
+        if Config.store_locally:
             self.run_offline()
         else:
             self.run_online()
