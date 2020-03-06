@@ -23,17 +23,6 @@ class RpiCam(Cam):
         self.cam.start_preview()
         time.sleep(2)
 
-    def login(self, address, username, pwd):
-        """
-
-        Parameters
-        ----------
-        address
-        username
-        pwd
-        """
-        raise NotImplementedError
-
     # todo check
     def cap_pic(self, output='array'):
         """
