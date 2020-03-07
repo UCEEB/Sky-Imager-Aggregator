@@ -17,7 +17,6 @@ class Config:
     cam_address = conf.get('Camera', 'cam_address')
     cam_username = conf.get('Camera', 'cam_username')
     cam_pwd = conf.get('Camera', 'cam_password')
-    RPi_cam = conf.getboolean('Camera', 'RPi_cam_enabled')
 
     # Logging settings
     log_path = conf.get('Logging', 'log_path')
