@@ -114,7 +114,6 @@ class Daemon:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
-                print(str(err.args))
                 sys.exit(1)
 
     def restart(self):
@@ -154,6 +153,12 @@ if __name__ == '__main__':
                 count += 1
                 daemon.start()
                 time.sleep(15)
+        elif 'check-temp-storage' == sys.argv[1]:
+            s = SkyScanner()
+            s.check_temp_storage()
+        elif 'check-main-storage' == sys.argv[1]:
+            s = SkyScanner()
+            s.check_main_storage()
         else:
             print('Unknown command')
             sys.exit(2)
