@@ -8,8 +8,6 @@ import os
 import pickle
 import shutil
 import zipfile
-import logging
-from logging import NullHandler
 from datetime import datetime
 
 import numpy as np
@@ -18,45 +16,52 @@ from astral import Astral
 from astral import Location
 from timeout_decorator import timeout
 
+from SkyImageAgg.Preprocessor import SkyImage
+from SkyImageAgg.Collectors.GeoVisionCam import GeoVisionCam as IPCamera
+from SkyImageAgg.Collectors.RpiCam import RpiCam
+from SkyImageAgg import Utils
 
-def _encrypt_data(key, message):
+
+def encrypt_data(key, message):
     """
-    Encrypts the given data/message using SHA-256 key.
+    Encrypt the given data/message using SHA-256 key.
 
     Parameters
     ----------
-    key : `bytes`
-        provided secret key
-    message : `str`
-        message that is intended to be hashed
+    key : bytes
+        secret key.
+    message : str
+        message that is intended to be hashed.
 
     Returns
     -------
-    hashed data : `str`
+    str
         the encrypted data
     """
     return hmac.new(key, bytes(message, 'ascii'), digestmod=hashlib.sha256).hexdigest()
 
 
-def _send_post_request(url, data):
+def send_post_request(url, data):
     """
-    Sends a post request to a given server/url
+    Send a post request to a given server/url.
 
     Parameters
     ----------
-    url : `str`
-        server's url
-    data : `str`
-        data to be sent
+    url : str
+        server's url.
+    data : str
+        data to be sent.
 
     Returns
     -------
-    http response : `dict`
+    requests.Response
+        http response.
     """
     post_data = {
         'data': data
     }
     return requests.post(url, data=post_data)
+
 
 class TwilightCalc:
     """
@@ -64,21 +69,16 @@ class TwilightCalc:
 
     Attributes
     ----------
-    latitude : `float`
-        location latitude
-    longitude : `float`
-        location longitude
-    altitude : `float`
-        location altitude
-
-    Parameters
-    ----------
-    latitude : `float`
-        location latitude
-    longitude : `float`
-        location longitude
-    altitude : `float`
-        location altitude
+    latitude : float
+        location latitude.
+    longitude : float
+        location longitude.
+    altitude : float
+        location altitude.
+    ntp_server : str
+        the ntp server that you want to sync time with.
+    twilight_coll : str or dict of {int : (datetime.time, datetime.time)}
+        collection of times, if file is selected it's the path to the file, else it's a dictionary.
     """
 
     def __init__(
@@ -86,33 +86,54 @@ class TwilightCalc:
             latitude,
             longitude,
             altitude,
-            twilight_coll_in_memory=True,
-            twilight_coll_file=None
+            ntp_server,
+            in_memory=True,
+            file=None
     ):
+        """
+        Construct a twilight calculator object.
+
+        Parameters
+        ----------
+        latitude : float
+            location latitude.
+        longitude : float
+            location longitude.
+        altitude : float
+            location altitude.
+        ntp_server : str
+            the ntp server that you want to sync time with.
+        in_memory : bool, default True
+            if you want to keep the calculated times in memory instead of writing them on disk.
+        file : str, default None
+            path to the pickle file that you to save the times in.
+        """
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
-        self.twilight_coll = twilight_coll_file
+        self.ntp_server = ntp_server
+        self.twilight_coll = file
+        self.sync_time()
 
-        if twilight_coll_in_memory and twilight_coll_file:
-            raise ValueError('store_in_memory and twilight_coll_file parameters cannot be both False or True!')
+        if in_memory and file:
+            raise ValueError('in_memory and file parameters cannot be both False or True!')
 
-        if twilight_coll_in_memory:
+        if in_memory:
             # collect the times and store it as an attribute
             self.twilight_coll = self.collect_annual_twilight_times()
 
     def find_sunrise_and_sunset_time(self, date=None):
         """
-        Finds the sunrise and sunset time of a given date.
+        Find the sunrise and sunset time of a given date.
 
         Parameters
         ----------
-        date : `datetime`
-            the date (default is None, which will take the current date)
+        date : datetime.datetime, default None
+            the date (default is None, which will take the current date).
 
         Returns
         -------
-        tuple of twilight times : `(datetime.time, datetime.time)`
+        tuple of (datetime.time, datetime.time)
             sunrise and sunset times
         """
         if not date:
@@ -134,12 +155,12 @@ class TwilightCalc:
 
     def collect_annual_twilight_times(self):
         """
-        Collects the annual sunrise/sunset times with respect to the location of the camera.
+        Collect the annual sunrise/sunset times with respect to the location of the camera.
 
         Returns
         -------
-        annual twilight times : `dict`
-            a dictionary with day order as its keys and tuple of twilight times as its values
+        dict of {int : (datetime.time, datetime.time)}
+            a dictionary with day order as its keys and tuple of twilight times as its values.
         """
         coll = {  # storing location coordinates as -1 as its key in the collection
             -1: (self.latitude,
@@ -164,16 +185,16 @@ class TwilightCalc:
 
     def get_twilight_times_by_day(self, day_of_year):
         """
-        Gets the sunrise/sunset times collected previously given the day of the year.
+        Get the sunrise/sunset times collected previously given the day of the year.
 
         Parameters
         ----------
-        day_of_year : `int`
+        day_of_year : int
             The day of year (DOY) is the sequential day number starting with day 1 on January 1st.
 
         Returns
         -------
-        tuple of twilight times : `(datetime.time, datetime.time)`
+        tuple of (datetime.time, datetime.time)
             sunrise and sunset times
         """
         if isinstance(self.twilight_coll, str):
@@ -190,11 +211,12 @@ class TwilightCalc:
 
     def has_location_changed(self):
         """
-        Checks if the given location is different from the stored one in the existing twilight collection.
+        Check if the given location is different from the stored one in the existing twilight collection.
 
         Returns
         -------
-        True if the location has changed, false otherwise : `boolean`
+        bool
+            True if the location has changed, false otherwise.
         """
         try:
             if self.get_twilight_times_by_day(-1) == (self.latitude, self.longitude):
@@ -202,184 +224,178 @@ class TwilightCalc:
         except Exception:
             return True
 
+    def sync_time(self):
+        """
+        Synchronize device time with UTC.
 
-class Controller(TwilightCalc):
+        Notes
+        -----
+            You need to install ntpd package on your device.
+            see:
+            https://raspberrytips.com/time-sync-raspberry-pi/
+        """
+        os.system('sudo /usr/sbin/ntpd {}'.format(self.ntp_server))
+
+
+class Controller(SkyImage):
     """
-    A class responsible for performing IO and network operations. It inherits properties from `TimeManager` and
-    `ImageProcessor` to pass their methods and attributes to its children such as `SkyScanner`.
+    A class responsible for performing IO and network operations.
+
+    It inherits properties from `SkyImage` to manipulate the images.
 
     Attributes
     ----------
-    client_id : `int`
-    jpeg_quality : `int`
-    key : `str`
-    server : `str`
-    time_format : `str`
-    storage_path : `str`
-    cam : `Collector.GeoVisionCam` or `Collector.RpiCam`
-
-    Parameters
-    ----------
-    server : `str`
+    server : str
         the server that receives the photos taken from sky to perform further processing.
-    client_id : `int`
+    client_id : int
         the camera ID assigned by the vendor.
-    latitude : `float`
-        latitude of the camera.
-    longitude : `float`
-        longitude of the camera.
-    altitude : `float`
-        the altitude of the camera.
-    jpeg_quality : `int`
-        the desired jpeg quality for the taken image.
-    mask_path : `str`
-        path to mask image.
-    auth_key : `str`
+    auth_key : bytes
         the SHA-256 key provided by the vendor.
-    storage_path : `str`
+    storage_path : str
         the path to the storage directory.
-    temp_storage_path : `str`
-        the path to the temporary storage directory.
-    time_format : `str`
+    time_format : str
         the time format.
-    autonomous_mode : `boolean`
-        True if the device is in offline mode, False otherwise (default is False).
-    cam_address : `str`
-        IP camera address.
-    username : `str`
-        IP camera username.
-    pwd : `str`
-        IP camera password.
-    rpi_cam : `boolean`
-        True if raspberry pi camera is used (default is False).
-    log_dir : `str`
-        the path to the directory that the logs are stored.
-    log_stream : `boolean`
-        True if logs are needed to be streamed to the console, False otherwise (silent).
-    irradiance_sensor : `boolean`
-        True if the irradiance sensor is attached to the device, False otherwise (default is False).
-    sensor_port : `str`
-        the port used for connecting the irradiance sensor to the device (default is None).
-    sensor_address : `int`
-        address of irradiance sensor (default is None).
-    sensor_baudrate : `int`
-        data transfer rate (default is None).
-    sensor_bytesize : `int`
-        the byte size of transferring data from sensor (default is None).
-    sensor_pairity : `str`
-        the sensor pairity (default is None).
-    sensor_stopbits : `int`
-        the sensor stopbits (default is None).
+    cam_username : str
+        username for the IP camera.
+    cam_pwd : str
+        password for the IP camera.
+    cam_address : str or None, default 'rpi'
+        url to the IP camera login page, if default, RPi camera used if attached.
     """
 
     def __init__(
             self,
             server,
             client_id,
-            *args,
             auth_key,
             storage_path,
             time_format,
-            temp_storage_path,
-            logger=None,
-            **kwargs
+            cam_username,
+            cam_pwd,
+            cam_address='rpi'
     ):
-        super(Controller, self).__init__(*args, **kwargs)
+        """
+        Construct a controller object.
 
-        if not logger:
-            # Null logger if no logger is defined as parameter
-            self._logger = logging.getLogger(__name__).addHandler(NullHandler())
+        Parameters
+        ----------
+        server : str
+            the server that receives the photos taken from sky to perform further processing.
+        client_id : int
+            the camera ID assigned by the vendor.
+        auth_key : str
+            the SHA-256 key provided by the vendor.
+        storage_path : str
+            the path to the storage directory.
+        time_format : str
+            the time format.
+        cam_username : str
+            username for the IP camera.
+        cam_pwd : str
+            password for the IP camera.
+        cam_address : str or None, default 'rpi'
+            url to the IP camera login page, if default, RPi camera used if attached.
+        """
+        if cam_address == 'rpi':
+            cam_obj = RpiCam()
+        elif not cam_address:
+            cam_obj = None
         else:
-            self._logger = logger
+            cam_obj = IPCamera(cam_address)
+            cam_obj.login(cam_username, cam_pwd)
+
+        super().__init__(camera=cam_obj)
 
         self.client_id = client_id
         self.key = bytes(auth_key, 'ascii')
         self.server = server
         self.time_format = time_format
         self.storage_path = storage_path
-        self.temp_storage_path = temp_storage_path
 
+        # create the main storage if doesn't exist
         if not os.path.exists(self.storage_path):
-            os.mkdir(self.storage_path)  # create the main storage if not exist
+            os.mkdir(self.storage_path)
 
-        if not os.path.exists(self.temp_storage_path):
-            os.mkdir(self.temp_storage_path)  # create the temp storage if not exist
-
-    def _make_json_from_image(self, image, time_stamp=datetime.utcnow()):
+    def prepare_as_post_req(self, time_stamp=datetime.utcnow()):
         """
-        Makes a json out of the encoded image and its metadata.
+        Make a json out of the encoded image and its metadata.
 
         Parameters
         ----------
-        image : `str` or `numpy.array`
-            path to the image or a numpy array of the image
-        time_stamp : `datetime.time`
-            the timestamp of the image (default is current time as `datetime.utcnow`)
+        time_stamp : str or datetime.datetime, default datetime.utcnow()
+            the timestamp of the image as string or datetime object
 
         Returns
         -------
-        json data : `str`
+        str
+            JSON data.
         """
-        if isinstance(image, str):
-            # if it's a file path, convert the stored image to a numpy array
-            image = self.make_array_from_image(image)
+        if isinstance(time_stamp, datetime):
+            time_stamp = time_stamp.strftime(self.time_format)
 
-        image = self.encode_image(image_arr=image)
+        encoded_image = self.encode_to_jpeg()
+
         data = {
             'status': 'ok',
             'id': self.client_id,
             'time': time_stamp,
             'coding': 'Base64',
-            'data': base64.b64encode(image).decode('ascii')
+            'data': base64.b64encode(encoded_image).decode('ascii')
         }
         return json.dumps(data)
 
-    def _upload_to_server(self, image, time_stamp=datetime.utcnow()):
+    def upload(self, time_stamp=datetime.utcnow()):
         """
-        Uploads the image to the server.
+        Upload the image to the server.
 
         Parameters
         ----------
-        image : `str` or `numpy.array`
-            path to the image or a numpy array of the image
-        time_stamp : `datetime`
-            the timestamp of the image (default is current time as `datetime.utcnow`)
+        time_stamp : datetime.datetime, default datetime.utcnow()
+            the timestamp of the image.
         """
-        json_data = self._make_json_from_image(image, time_stamp)
-        signature = _encrypt_data(self.key, json_data)
+        json_data = self.prepare_as_post_req(time_stamp)
+        signature = encrypt_data(self.key, json_data)
         try:
-            response = _send_post_request('{}{}'.format(self.server, signature), json_data)
-            json_response = json.loads(response.text)
+            response = send_post_request(f'{self.server}{signature}', json_data)
+            json.loads(response.text)
         except Exception as e:
             raise ConnectionError(e)
 
-    @timeout(60, timeout_exception=TimeoutError, use_signals=False)
-    def upload_thumbnail(self, thumbnail, time_stamp=datetime.utcnow()):
+    @timeout(20, timeout_exception=TimeoutError, use_signals=False)
+    def upload_thumbnail(self, time_stamp=datetime.utcnow()):
         """
-        Uploads a thumbnail to the server with a timeout limit.
+        Upload thumbnail to the server with a timeout limit.
 
         Parameters
         ----------
-        thumbnail : `str` or `numpy.array`
-            path to the thumbnail or a numpy array of the thumbnail
-        time_stamp : `datetime.time`
-            the timestamp of the image (default is current time as `datetime.utcnow`)
+        time_stamp : datetime.datetime, default datetime.utcnow()
+            the timestamp of the image.
         """
-        self._upload_to_server(thumbnail, time_stamp=time_stamp)
+        self.upload(self.make_thumbnail(), time_stamp=time_stamp)
 
     @timeout(15, timeout_exception=TimeoutError, use_signals=False)
-    def upload_image(self, image, time_stamp=datetime.utcnow()):
+    def upload_with_timeout(self, time_stamp=datetime.utcnow()):
         """
-        Uploads the image to the server with a timeout limit.
+        Upload the image to the server with a given timeout limit.
 
         Parameters
         ----------
-        image : `str` or `numpy.array`
-            path to the image or a numpy array of the image
-        time_stamp : `datetime.time`
-            the timestamp of the image (default is current time as `datetime.utcnow`)
+        time_stamp : datetime.datetime, default datetime.utcnow()
+            the timestamp of the image.
         """
-        self._upload_to_server(image, time_stamp=time_stamp)
+        self.upload(time_stamp=time_stamp)
+
+    @Utils.retry_on_failure(attempts=2)
+    def retry_uploading_image(self, time_stamp=datetime.utcnow()):
+        """
+        Retry to upload a given image for a given number of attempts passed through the decorator.
+
+        Parameters
+        ----------
+        time_stamp : datetime.datetime, default datetime.utcnow()
+            the timestamp of the image.
+        """
+        self.upload_with_timeout(time_stamp=time_stamp)
 
     def get_available_free_space(self):
         """
@@ -387,15 +403,15 @@ class Controller(TwilightCalc):
 
         Returns
         -------
-        available space : `float`
-            available space in GB
+        float
+            available space in GB.
         """
         free_space = shutil.disk_usage(self.storage_path)[2]
         return round(free_space / 2 ** 30, 1)
 
     def compress_storage(self):
         """
-        Compresses all the jpeg images in `storage_path` and saves them in the same directory.
+        Compress all the jpeg images in `storage_path` and saves them in the same directory.
         """
         curr_time = dt.datetime.utcnow().strftime(self.time_format)
         zip_archive = '{}.zip'.format(curr_time)
