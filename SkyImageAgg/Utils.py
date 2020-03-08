@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+import socket
 
 from timeout_decorator import timeout
 
@@ -20,6 +20,7 @@ def retry_on_failure(attempts, delay=3, back_off=1):
     -------
     function or bool
     """
+
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             m_tries, m_delay = attempts, delay  # make mutable
@@ -54,6 +55,7 @@ def retry_on_exception(attempts, delay=3, back_off=1):
     -------
     function or bool
     """
+
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             m_tries, m_delay = attempts, delay
@@ -84,6 +86,7 @@ def loop_infinitely(time_gap=3):
     function
         the recurring function that is decorated
     """
+
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             while True:
@@ -103,3 +106,29 @@ def loop_infinitely(time_gap=3):
         return f_retry
 
     return deco_retry
+
+
+def has_internet(host='8.8.8.8', port=53, timeout=20):
+    """
+    Check if there is internet connection.
+
+    Parameters
+    ----------
+    host : str, default '8.8.8.8'
+        IP to ping. the default is google DNS server.
+    port : int, default 53
+        the port to ping the server on.
+    timeout : int, default 20
+        the timeout window for pinging.
+
+    Returns
+    -------
+    bool
+        if there is internet connection True, otherwise False.
+    """
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except Exception:
+        return False
