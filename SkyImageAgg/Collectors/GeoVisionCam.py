@@ -11,9 +11,17 @@ from SkyImageAgg.Collectors.Camera import Cam
 
 class GeoVisionCam(Cam):
     """
-
+    GeoVision IP camera class.
     """
     def __init__(self, cam_address):
+        """
+        Construct a cam object.
+
+        Parameters
+        ----------
+        cam_address : str
+            url to the IP camera login page.
+        """
         super().__init__()
         self.cam_address = cam_address
         self.user_token = None
@@ -41,7 +49,14 @@ class GeoVisionCam(Cam):
 
     def login(self, username, pwd):
         """
+        Login to the IP camera.
 
+        Parameters
+        ----------
+        username : str
+            username for the IP camera.
+        pwd : str
+            password for the IP camera.
         """
         umd5, pmd5 = self._get_hashed_credentials(username, pwd)
         data = {
@@ -65,14 +80,16 @@ class GeoVisionCam(Cam):
 
     def cap_pic(self, output='array'):
         """
+        Capture a picture.
 
         Parameters
         ----------
-        output
-
+        output : str, default 'array'
+            output type of the picture, if a path given, the picture will be saved there.
         Returns
         -------
-
+        numpy.array
+            image array.
         """
         if self.user_token and self.pass_token and self.desc_token:
             data = {
@@ -97,9 +114,6 @@ class GeoVisionCam(Cam):
 
     def cap_video(self, output):
         """
-
-        Parameters
-        ----------
-        output
+        Capture video.
         """
-        raise NotImplementedError
+        raise NotImplementedError('This method is not implemented yet!')
