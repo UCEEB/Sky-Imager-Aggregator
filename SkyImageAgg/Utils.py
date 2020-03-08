@@ -3,17 +3,23 @@ from datetime import datetime
 
 from timeout_decorator import timeout
 
+
 def retry_on_failure(attempts, delay=3, back_off=1):
     """
+    Decorate a function to recall it upon false return.
+
     Parameters
     ----------
-    attempts
-    delay
-    back_off
+    attempts : int
+        number of attempts to retry.
+    delay : int, default 3
+        the delay between retry's.
+    back_off : int, default 1
+        growth of time delay after each try.
     Returns
     -------
+    function or bool
     """
-
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             m_tries, m_delay = attempts, delay  # make mutable
@@ -34,15 +40,20 @@ def retry_on_failure(attempts, delay=3, back_off=1):
 
 def retry_on_exception(attempts, delay=3, back_off=1):
     """
+    Decorate a function to recall it when an exception occurs.
+
     Parameters
     ----------
-    attempts
-    delay
-    back_off
+    attempts : int
+        number of attempts to retry.
+    delay : int, default 3
+        the delay between retry's.
+    back_off : int, default 1
+        growth of time delay after each try.
     Returns
     -------
+    function or bool
     """
-
     def deco_retry(f):
         def f_retry(*args, **kwargs):
             m_tries, m_delay = attempts, delay
@@ -62,14 +73,15 @@ def retry_on_exception(attempts, delay=3, back_off=1):
 
 def loop_infinitely(time_gap=3):
     """
-    A decorator to transform functions into a recurrent function executed on a timely basis.
+    Transform functions into a recurrent function executed on a timely basis.
+
     Parameters
     ----------
-    time_gap : `int`
+    time_gap : int, default 3
         the time gap between each execution (default is 3)
     Returns
     -------
-    `function`
+    function
         the recurring function that is decorated
     """
     def deco_retry(f):
