@@ -42,6 +42,7 @@ class RpiCam(Cam):
         ----------
         output : str, default 'array'
             output type of the picture, if a path given, the picture will be saved there.
+
         Returns
         -------
         numpy.array

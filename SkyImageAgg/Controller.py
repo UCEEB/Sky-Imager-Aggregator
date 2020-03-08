@@ -289,9 +289,9 @@ class Controller(SkyImage):
             the path to the storage directory.
         time_format : str
             the time format.
-        cam_username : str
+        cam_username : str or None
             username for the IP camera.
-        cam_pwd : str
+        cam_pwd : str or None
             password for the IP camera.
         cam_address : str or None, default 'rpi'
             url to the IP camera login page, if default, RPi camera used if attached.

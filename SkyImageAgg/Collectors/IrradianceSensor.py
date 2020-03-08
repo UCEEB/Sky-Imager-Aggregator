@@ -6,10 +6,26 @@ import minimalmodbus
 
 class IrrSensor(minimalmodbus.Instrument):
     """
-
+    Class for communicating with the irradiance sensor through Modbus protocol.
     """
-
     def __init__(self, port, address, baudrate, bytesize, parity, stopbits):
+        """
+        Construct a sensor object.
+
+        Parameters
+        ----------
+        port : str
+            port that the sensor is connected to.
+        address : int
+            modbus address
+        baudrate : int
+            modbus baudrate
+        bytesize : int
+        parity : str
+            modbus pairity
+        stopbits : int
+            modbus stopbits
+        """
         super().__init__(port=port, slaveaddress=address)
         self.serial.baudrate = baudrate
         self.serial.bytesize = bytesize
@@ -28,10 +44,7 @@ class IrrSensor(minimalmodbus.Instrument):
 
     def get_data(self):
         """
-
-        Returns
-        -------
-
+        Get required data from sensor,
         """
         self.open_serial()
 
@@ -45,7 +58,7 @@ class IrrSensor(minimalmodbus.Instrument):
     @staticmethod
     def restart_USB2Serial():
         """
-
+        Restart the USB port that the modbus is connected to.
         """
         time.sleep(0.5)
         os.system('sudo modprobe -r pl2303')
