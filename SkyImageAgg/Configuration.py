@@ -1,12 +1,14 @@
 import configparser
+from os.path import dirname
+from os.path import join
 
 conf = configparser.ConfigParser()
-conf.read('../config.ini')
+conf.read(join(dirname(dirname(__file__)), 'config.ini'))
 
 
 class Config:
     """
-    Holds the necessary configuration variables from config.ini file.
+    Hold the necessary configuration variables from config.ini file.
     """
     # authentication settings
     client_id = conf.get('Auth', 'client_id')
@@ -55,6 +57,7 @@ class Config:
 
     # Irradiance sensor settings
     irr_sensor_enabled = conf.getboolean('Irradiance_sensor', 'enabled')
+    irradiance_at_night = conf.getboolean('Irradiance_sensor', 'measure_at_night')
     irr_sensor_port = conf.get('Irradiance_sensor', 'port')
     irr_sensor_address = conf.getint('Irradiance_sensor', 'sensor_address')
     irr_sensor_baudrate = conf.getint('Irradiance_sensor', 'baudrate')
