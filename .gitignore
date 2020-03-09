@@ -7,7 +7,9 @@ src/__pycache__/
 src/src.pyproj
 SkyImageAgg/test_tbd.py
 config.ini
+./config.ini
 ./systemd/*
 ./test/
 /test/dummy/*
 /ann_twilight_coll.pkl
+venv
