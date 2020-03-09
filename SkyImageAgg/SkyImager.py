@@ -23,9 +23,13 @@ from SkyImageAgg.Logger import Logger
 
 _base_dir = dirname(dirname(__file__))
 _tmp_dir = join(_base_dir, 'temp')
+_log_dir = join(_base_dir, 'log')
 
 if not os.path.exists(_tmp_dir):
     os.mkdir(_tmp_dir)
+
+if not os.path.exists(_log_dir):
+    os.mkdir(_log_dir)
 
 # a LIFO stack for storing failed uploads to be accessible by uploader job.
 upload_stack = LifoQueue(maxsize=5)
