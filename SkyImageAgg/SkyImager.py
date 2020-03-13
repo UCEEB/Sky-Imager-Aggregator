@@ -207,12 +207,14 @@ class SkyScanner(Controller):
 
     def preprocess(self):
         """
-        Crops and masks the image from sky.
+        Preprocess the image before upload or save.
         """
         # Crop
-        self.crop()
+        if Config.cropping_enabled:
+            self.crop()
         # Apply mask
-        self.apply_mask()
+        if Config.masking_enabled:
+            self.apply_mask()
 
     def execute_and_upload(self):
         """

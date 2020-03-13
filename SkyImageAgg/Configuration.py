@@ -44,7 +44,9 @@ class Config:
     # Image settings
     jpeg_quality = conf.getint('Image', 'jpeg_quality')
     image_size = [int(i.strip()) for i in conf.get('Image', 'image_size').split(',')]
+    masking_enabled = conf.getboolean('Image', 'masking')
     mask_path = conf.get('Image', 'mask_image')
+    cropping_enabled = conf.getboolean('Image', 'cropping')
 
     # Dashboard settings (InfluxDB connected to Grafana)
     dashboard_enabled = conf.getboolean('Dashboard', 'enabled')
