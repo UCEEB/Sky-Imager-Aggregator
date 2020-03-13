@@ -175,9 +175,14 @@ class SkyScanner(Controller):
 
         self.daytime = False
 
-    def measure_irradiance(self):
+    def measure_irradiance(self, timestamp='now'):
         """
         Measure the irradiance and temperature.
+
+        Parameters
+        ----------
+        timestamp : datetime.datetime or str
+            timestamp of the data
 
         Returns
         -------
@@ -185,20 +190,37 @@ class SkyScanner(Controller):
         """
         try:
             sensor_data = self.irr_sensor.get_data()
+            if timestamp.lower() == 'now':
+                timestamp = dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
             ms = {
-                'timestamp': self.timestamp,
+                'timestamp': timestamp,
                 'irradiance': sensor_data[0],  # irradiance (W/m^2)
                 'ext_temp': sensor_data[1],  # external temperature (°C)
                 'cell_temp': sensor_data[2]  # cell temperature (°C)
             }
-            return ms
+            # get sensor data (irr, ext_temp, cell_temp)
+            sensor_logger.info(ms)
+
+            # send to dashboard
+            logger.info(
+                f"irr: {ms['irradiance']}, "
+                f"ext_t: {ms['ext_temp']}, "
+                f"cel_t:  {ms['cell_temp']}"
+            )
+
+            # store in data directory
+            if Config.irr_sensor_store:
+                with open(join(_data_dir, time.strftime('irr-%Y%m%d.csv')), 'a+') as f:
+                    writer = csv.DictWriter(f, fieldnames=list(ms.keys()))
+                    writer.writerow(ms)
 
         except Exception as e:
             logger.error(f'Couldn\'t collect data from irradiance sensor!\n{e}')
 
     def scan(self):
         """
-        Takes picture and measure the solar irradiance.
+        Take picture and measure the solar irradiance.
         """
         # snap a pic
         self.snap_picture()
@@ -209,14 +231,7 @@ class SkyScanner(Controller):
 
         if Config.irr_sensor_enabled:
             # get sensor data (irr, ext_temp, cell_temp)
-            ms = self.measure_irradiance()
-            sensor_logger.info(ms)
-
-            logger.info(
-                f"irr: {ms['irradiance']}, "
-                f"ext_t: {ms['ext_temp']}, "
-                f"cel_t:  {ms['cell_temp']}"
-            )
+            self.measure_irradiance(timestamp=self.timestamp)
 
             if Config.irr_sensor_store:
                 with open(join(_data_dir, time.strftime('irr-%Y%m%d.csv')), 'a+') as f:
