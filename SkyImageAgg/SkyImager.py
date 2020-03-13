@@ -67,7 +67,7 @@ if Config.dashboard_enabled:
     )
 
 # Logger object to collect irradiance sensor data and send the to an influxDB server
-if Config.irr_sensor_enabled:
+if Config.irr_sensor_enabled and Config.dashboard_enabled:
     sensor_logger = Logger(name='IrrSensor')
     log_file_path = join(Config.log_path, sensor_logger.name)
     sensor_logger.add_timed_rotating_file_handler(log_file=log_file_path)
