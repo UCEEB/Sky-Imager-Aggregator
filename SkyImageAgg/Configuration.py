@@ -59,6 +59,7 @@ class Config:
 
     # Irradiance sensor settings
     irr_sensor_enabled = conf.getboolean('Irradiance_sensor', 'enabled')
+    irr_sensor_store = conf.getboolean('Irradiance_sensor', 'store_locally')
     irradiance_at_night = conf.getboolean('Irradiance_sensor', 'measure_at_night')
     irr_sensor_port = conf.get('Irradiance_sensor', 'port')
     irr_sensor_address = conf.getint('Irradiance_sensor', 'sensor_address')

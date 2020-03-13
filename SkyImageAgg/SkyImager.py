@@ -8,6 +8,7 @@ import time
 from os.path import dirname
 from os.path import join
 from queue import LifoQueue
+import csv
 
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -24,12 +25,16 @@ from SkyImageAgg.Logger import Logger
 _base_dir = dirname(dirname(__file__))
 _tmp_dir = join(_base_dir, 'temp')
 _log_dir = join(_base_dir, 'log')
+_data_dir = join(_base_dir, 'data')
 
 if not os.path.exists(_tmp_dir):
     os.mkdir(_tmp_dir)
 
 if not os.path.exists(_log_dir):
     os.mkdir(_log_dir)
+
+if not os.path.exists(_data_dir):
+    os.mkdir(_data_dir)
 
 # a LIFO stack for storing failed uploads to be accessible by uploader job.
 upload_stack = LifoQueue(maxsize=5)
@@ -173,6 +178,10 @@ class SkyScanner(Controller):
     def measure_irradiance(self):
         """
         Measure the irradiance and temperature.
+
+        Returns
+        -------
+        dict of {str: str}
         """
         try:
             sensor_data = self.irr_sensor.get_data()
@@ -182,12 +191,8 @@ class SkyScanner(Controller):
                 'ext_temp': sensor_data[1],  # external temperature (°C)
                 'cell_temp': sensor_data[2]  # cell temperature (°C)
             }
-            sensor_logger.info(ms)
-            logger.info(
-                f"irr: {ms['irradiance']}, "
-                f"ext_t: {ms['ext_temp']}, "
-                f"cel_t:  {ms['cell_temp']}"
-            )
+            return ms
+
         except Exception as e:
             logger.error(f'Couldn\'t collect data from irradiance sensor!\n{e}')
 
@@ -201,9 +206,27 @@ class SkyScanner(Controller):
         self.timestamp = self.timestamp.strftime(Config.time_format)
         # set the path to save the image
         self.set_path(os.path.join(_tmp_dir, self.timestamp))
+
         if Config.irr_sensor_enabled:
             # get sensor data (irr, ext_temp, cell_temp)
-            self.measure_irradiance()
+            ms = self.measure_irradiance()
+            sensor_logger.info(ms)
+
+            logger.info(
+                f"irr: {ms['irradiance']}, "
+                f"ext_t: {ms['ext_temp']}, "
+                f"cel_t:  {ms['cell_temp']}"
+            )
+
+            if Config.irr_sensor_store:
+                with open(join(_data_dir, time.strftime('irr-%Y%m%d.csv')), 'a+') as f:
+                    writer = csv.writer(f)
+                    writer.writerow([
+                        self.timestamp,
+                        ms['irradiance'],
+                        ms['ext_temp'],
+                        ms['cell_temp']
+                    ])
 
     def preprocess(self):
         """
