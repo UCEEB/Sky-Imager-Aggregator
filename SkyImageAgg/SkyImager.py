@@ -233,17 +233,7 @@ class SkyScanner(Controller):
             # get sensor data (irr, ext_temp, cell_temp)
             self.measure_irradiance(timestamp=self.timestamp)
 
-            if Config.irr_sensor_store:
-                with open(join(_data_dir, time.strftime('irr-%Y%m%d.csv')), 'a+') as f:
-                    writer = csv.writer(f)
-                    writer.writerow([
-                        self.timestamp,
-                        ms['irradiance'],
-                        ms['ext_temp'],
-                        ms['cell_temp']
-                    ])
-
-    def preprocess(self):
+    def preprocess_image(self):
         """
         Preprocess the image before upload or save.
         """
@@ -263,8 +253,8 @@ class SkyScanner(Controller):
         if self.daytime or Config.night_mode:
             # capture the image and set the proper name and path for it
             self.scan()
-            # preprocess the image
-            self.preprocess()
+            # preprocess_image the image
+            self.preprocess_image()
             # try to upload the image to the server, if failed, save it to storage
             try:
                 self.upload_with_timeout(time_stamp=self.timestamp)
@@ -288,8 +278,8 @@ class SkyScanner(Controller):
         if self.daytime or Config.night_mode:
             # capture the image and set the proper name and path for it
             self.scan()
-            # preprocess the image
-            self.preprocess()
+            # preprocess_image the image
+            self.preprocess_image()
             # write it in storage
             try:
                 self.save_as_jpeg()
@@ -306,8 +296,8 @@ class SkyScanner(Controller):
         if self.daytime or Config.night_mode:
             # capture the image and set the proper name and path for it
             self.scan()
-            # preprocess the image
-            self.preprocess()
+            # preprocess_image the image
+            self.preprocess_image()
 
             try:
                 self.upload_thumbnail(time_stamp=self.timestamp)
