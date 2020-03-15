@@ -210,9 +210,13 @@ class SkyScanner(Controller):
             )
 
             # store in data directory
+            file_name = join(_data_dir, time.strftime('irr-%Y%m%d.csv'))
+            file_exists = os.path.isfile(file_name)
             if Config.irr_sensor_store:
-                with open(join(_data_dir, time.strftime('irr-%Y%m%d.csv')), 'a+') as f:
+                with open(file_name, 'a+') as f:
                     writer = csv.DictWriter(f, fieldnames=list(ms.keys()))
+                    if not file_exists:
+                        writer.writeheader()
                     writer.writerow(ms)
 
         except Exception as e:
