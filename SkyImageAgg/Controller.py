@@ -330,8 +330,11 @@ class Controller(SkyImage):
         str
             JSON data.
         """
+        # converting the time to the server time format (iso)
         if isinstance(time_stamp, datetime):
-            time_stamp = time_stamp.strftime(self.time_format)
+            time_stamp = time_stamp.isoformat()
+        else:
+            time_stamp = datetime.strptime(time_stamp, self.time_format).isoformat()
 
         encoded_image = self.encode_to_jpeg()
 

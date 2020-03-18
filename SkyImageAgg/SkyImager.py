@@ -265,8 +265,7 @@ class SkyScanner(Controller):
                 logger.info(f'{self.timestamp}.jpg uploaded!')
             except Exception as e:
                 if not upload_stack.full():
-                    logger.warning(
-                        f'Couldn\'t upload {self.timestamp}.jpg! Queueing for another try!\n{e}')
+                    logger.warning(f'Couldn\'t upload {self.timestamp}.jpg! Queueing for another try!\n{e}')
                     upload_stack.put(self)
                 else:
                     logger.info('The upload stack is full! Storing the image...')
