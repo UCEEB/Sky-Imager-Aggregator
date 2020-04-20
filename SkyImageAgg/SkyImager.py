@@ -57,6 +57,7 @@ if Config.dashboard_enabled:
         username=Config.influxdb_user,
         pwd=Config.influxdb_pwd,
         host=Config.influxdb_host,
+        port=Config.influxdb_port,
         database=Config.influxdb_database,
         measurement='app_log',
         tags={
@@ -75,6 +76,7 @@ if Config.irr_sensor_enabled and Config.dashboard_enabled:
         username=Config.influxdb_user,
         pwd=Config.influxdb_pwd,
         host=Config.influxdb_host,
+        port=Config.influxdb_port,
         database=Config.influxdb_database,
         measurement='sensor_log',
         tags={

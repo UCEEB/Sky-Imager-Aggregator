@@ -101,8 +101,8 @@ class Logger(logging.Logger):
             handler.setFormatter(self.format)
         self.addHandler(handler)
 
-    def add_influx_handler(self, host, username, pwd, database, measurement, tags=None, format=None):
-        handler = InfluxdbLogHandler(host, username, pwd, database, measurement)
+    def add_influx_handler(self, host, username, pwd, database, measurement, port=8086, tags=None, format=None):
+        handler = InfluxdbLogHandler(host, username, pwd, database, measurement, port=port)
         if tags:
             handler.add_tags(**tags)
         self.add_handler(handler, format=format)
@@ -125,6 +125,7 @@ class Logger(logging.Logger):
     def add_sensor_handler(
             self,
             host,
+            port,
             username,
             pwd,
             database,
@@ -132,7 +133,7 @@ class Logger(logging.Logger):
             format=Formatter('[%(asctime)s] %(name)s %(message)s'),
             tags=None
     ):
-        handler = SensorLogHandler(host, username, pwd, database, measurement)
+        handler = SensorLogHandler(host, username, pwd, database, measurement, port=port)
         handler.setLevel(20)  # INFO level
         if tags:
             handler.add_tags(**tags)
